@@ -32,7 +32,7 @@ const env = {
   appSlug: "anaphylaxis-app",
   // S3 URL of the app logo - set this to the URL returned by generate_image when creating custom logo
   // Leave empty to use the default icon from assets/images/icon.png
-  logoUrl: "/manus-storage/icon_c7e1440a.png",
+  logoUrl: "",
   scheme: "anaphylaxisguard",
   iosBundleId: "com.manus.anaphylaxisguard",
   androidPackage: "com.manus.anaphylaxisguard",

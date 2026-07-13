@@ -69,7 +69,7 @@ export default function DashboardScreen() {
   useEffect(() => {
     const riskFactors = calculateRisk(
       health.vitalSigns.heartRate,
-      health.vitalSigns.gsr,
+      health.vitalSigns.skinHumidity,
       health.vitalSigns.temperature
     );
 
