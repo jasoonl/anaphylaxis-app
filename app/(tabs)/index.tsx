@@ -6,6 +6,8 @@ import * as Haptics from "expo-haptics";
 import { useHealth } from "@/lib/health-context";
 import { calculateRisk } from "@/lib/risk-calculator";
 import { bleManager } from "@/lib/ble-manager";
+import { router } from "expo-router";
+import { notificationService } from "@/lib/notification-service";
 
 /**
  * Dashboard Screen - Anaphylaxis Guard
@@ -34,6 +36,13 @@ export default function DashboardScreen() {
   const colors = useColors();
   const health = useHealth();
   const [prevScore, setPrevScore] = useState(0);
+  const [prevRiskLevel, setPrevRiskLevel] = useState<"safe" | "warning" | "critical">("safe");
+  const [hasAutoAlerted, setHasAutoAlerted] = useState(false);
+
+  // Initialize notifications
+  useEffect(() => {
+    notificationService.initialize();
+  }, []);
 
   // Subscribe to sensor data from BLE device or demo mode
   useEffect(() => {
@@ -104,7 +113,7 @@ export default function DashboardScreen() {
 
   const handleEmergencyPress = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    // TODO: Navigate to emergency alert screen
+    router.push("/emergency-alert");
   };
 
   return (
@@ -245,7 +254,10 @@ export default function DashboardScreen() {
 
             {/* View Details Button */}
             <TouchableOpacity
-              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/(tabs)/metrics");
+              }}
               className="flex-1 bg-primary rounded-2xl py-4 px-4 items-center justify-center"
               activeOpacity={0.8}
             >
