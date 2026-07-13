@@ -1,4 +1,4 @@
-import { ScrollView, Text, View, TouchableOpacity, Pressable, Alert } from "react-native";
+import { ScrollView, Text, View, TouchableOpacity, Pressable, Alert, TextInput } from "react-native";
 import { useState } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -56,22 +56,22 @@ export default function SettingsScreen() {
     }));
   };
 
-  const handleReconnectDevice = () => {
+  const handleConnectDevice = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Alert.alert("Reconnect Device", "Scanning for Bluetooth devices...");
+    Alert.alert("Connect Device", "Scanning for Bluetooth devices...");
   };
 
-  const handleForgetDevice = () => {
+  const handleDisconnectDevice = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     Alert.alert(
-      "Forget Device",
-      "Are you sure you want to forget the paired device? You will need to pair it again.",
+      "Disconnect Device",
+      "Are you sure you want to disconnect the paired device?",
       [
         { text: "Cancel", onPress: () => {} },
         {
-          text: "Forget",
+          text: "Disconnect",
           onPress: () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            Alert.alert("Device Forgotten", "The device has been removed.");
+            Alert.alert("Device Disconnected", "The device has been disconnected.");
           },
           style: "destructive",
         },
@@ -221,18 +221,18 @@ export default function SettingsScreen() {
 
               <View className="flex-row gap-2">
                 <TouchableOpacity
-                  onPress={handleReconnectDevice}
+                  onPress={handleConnectDevice}
                   className="flex-1 bg-primary rounded-lg py-3 items-center"
                   activeOpacity={0.8}
                 >
-                  <Text className="text-sm font-semibold text-white">Reconnect</Text>
+                  <Text className="text-sm font-semibold text-white">Connect</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={handleForgetDevice}
-                  className="flex-1 bg-error bg-opacity-10 rounded-lg py-3 items-center border border-error"
+                  onPress={handleDisconnectDevice}
+                  className="flex-1 bg-error rounded-lg py-3 items-center"
                   activeOpacity={0.8}
                 >
-                  <Text className="text-sm font-semibold text-error">Forget</Text>
+                  <Text className="text-sm font-semibold text-white">Disconnect</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -319,7 +319,7 @@ export default function SettingsScreen() {
             </View>
 
             {/* Medical Disclaimer */}
-            <View className="bg-warning bg-opacity-10 rounded-2xl p-4 border border-warning">
+            <View className="bg-warning bg-opacity-10 rounded-lg p-3 border border-warning">
               <Text className="text-xs font-semibold text-warning mb-2">⚠️ Medical Disclaimer</Text>
               <Text className="text-xs text-warning leading-relaxed">
                 This app is a prototype companion tool and should not be used as a standalone medical diagnostic device. Always consult with healthcare professionals for medical advice.

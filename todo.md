@@ -103,3 +103,31 @@
 - Requires compatible wearable device with BLE support (XIAO ESP32 C3 or similar)
 - Demo mode uses simulated sensor data for testing without hardware
 - Emergency alerts require valid emergency contact phone numbers for SMS delivery
+
+
+## Bug Fixes & UI Improvements
+
+### Emergency Alert Screen
+- [x] Fix button overflow on emergency alert modal
+- [x] Ensure "Administer Epinephrine", "Notify Contacts", and "Dismiss Alert" buttons are fully visible
+- [x] Fix countdown timer display
+
+### Settings Screen
+- [x] Change red button text to "Disconnect"
+- [x] Update blue button to show "Connect" or "Reconnect" based on device status
+- [x] Fix orange About section display
+
+### Contacts Screen
+- [x] Add "Add New Contact" button and form
+- [x] Fix blue test alert button text (replace emoji with proper text)
+- [x] Implement add contact functionality
+- [x] Implement edit contact functionality
+- [x] Implement delete contact functionality
+
+### Sensor Integration
+- [x] Update BLE manager for Pulse Sensor (BPM output)
+- [x] Add Blood Pressure Sensor support (systolic/diastolic)
+- [x] Add BME280 TEWL sensor support (humidity/skin conductance)
+- [x] Add Temperature Sensor support
+- [x] Update risk calculator for 5-sensor system
+- [x] Configure Arduino Uno + XIAO ESP32 C3 communication

@@ -1,4 +1,4 @@
-import { ScrollView, Text, View, TouchableOpacity, Pressable, Alert } from "react-native";
+import { ScrollView, Text, View, TouchableOpacity, Pressable, Alert, TextInput } from "react-native";
 import { useState } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -14,14 +14,6 @@ import { useHealth } from "@/lib/health-context";
  * - Edit/delete existing contacts
  * - Configure notification preferences
  */
-
-interface EmergencyContact {
-  id: string;
-  name: string;
-  phone: string;
-  relationship: string;
-  notifyEnabled: boolean;
-}
 
 export default function ContactsScreen() {
   const colors = useColors();
@@ -41,9 +33,11 @@ export default function ContactsScreen() {
     }
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const contact: EmergencyContact = {
+    const contact = {
       id: Date.now().toString(),
-      ...newContact,
+      name: newContact.name,
+      phone: newContact.phone,
+      relationship: newContact.relationship,
       notifyEnabled: true,
     };
 
@@ -82,94 +76,58 @@ export default function ContactsScreen() {
   return (
     <ScreenContainer className="p-4">
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
-        <View className="gap-6 pb-8">
+        <View className="gap-4 pb-8">
           {/* Header */}
           <View className="gap-1">
             <Text className="text-3xl font-bold text-foreground">Emergency Contacts</Text>
             <Text className="text-sm text-muted">Manage your emergency notification list</Text>
           </View>
 
-          {/* Contacts List */}
-          <View className="gap-3">
-            {health.emergencyContacts.length > 0 ? (
-              health.emergencyContacts.map((contact) => (
-                <View
-                  key={contact.id}
-                  className="bg-surface rounded-2xl p-4 border border-border flex-row items-center justify-between"
-                >
-                  <View className="flex-1">
-                    <Text className="text-lg font-semibold text-foreground">{contact.name}</Text>
-                    <Text className="text-sm text-muted mt-1">{contact.phone}</Text>
-                    <Text className="text-xs text-muted mt-1">{contact.relationship}</Text>
-                  </View>
-
-                  <View className="flex-row gap-2 items-center">
-                    {/* Toggle Notification */}
-                    <Pressable
-                      onPress={() => handleToggleNotification(contact.id)}
-                      style={({ pressed }) => [
-                        {
-                          opacity: pressed ? 0.7 : 1,
-                        },
-                      ]}
-                    >
-                      <View
-                        className={`w-12 h-12 rounded-lg items-center justify-center ${
-                          contact.notifyEnabled ? "bg-success" : "bg-muted"
-                        }`}
-                      >
-                        <Text className="text-lg">{contact.notifyEnabled ? "✓" : "✗"}</Text>
-                      </View>
-                    </Pressable>
-
-                    {/* Delete Button */}
-                    <Pressable
-                      onPress={() => handleDeleteContact(contact.id)}
-                      style={({ pressed }) => [
-                        {
-                          opacity: pressed ? 0.7 : 1,
-                        },
-                      ]}
-                    >
-                      <View className="w-12 h-12 rounded-lg bg-error bg-opacity-10 items-center justify-center">
-                        <Text className="text-lg">🗑️</Text>
-                      </View>
-                    </Pressable>
-                  </View>
-                </View>
-              ))
-            ) : (
-              <View className="bg-surface rounded-2xl p-6 items-center justify-center border border-border">
-                <Text className="text-lg text-muted">No emergency contacts added yet</Text>
-              </View>
-            )}
-          </View>
+          {/* Add Contact Button */}
+          <TouchableOpacity
+            onPress={() => setShowAddForm(!showAddForm)}
+            className="bg-primary rounded-lg py-3 px-4 items-center active:opacity-80"
+            activeOpacity={0.8}
+          >
+            <Text className="text-base font-semibold text-white">
+              {showAddForm ? "Cancel" : "+ Add New Contact"}
+            </Text>
+          </TouchableOpacity>
 
           {/* Add Contact Form */}
           {showAddForm && (
-            <View className="bg-surface rounded-2xl p-4 border border-border gap-3">
+            <View className="bg-surface rounded-lg p-4 border border-border gap-3">
               <Text className="text-lg font-semibold text-foreground">Add New Contact</Text>
 
               {/* Name Input */}
               <View className="gap-1">
                 <Text className="text-sm text-muted">Name</Text>
-                <View className="bg-background rounded-lg px-4 py-3 border border-border">
-                  <Text className="text-foreground">{newContact.name || "Enter name..."}</Text>
-                </View>
+                <TextInput
+                  placeholder="Enter contact name"
+                  placeholderTextColor={colors.muted}
+                  value={newContact.name}
+                  onChangeText={(text) => setNewContact({ ...newContact, name: text })}
+                  className="bg-background rounded-lg px-4 py-3 border border-border text-foreground"
+                />
               </View>
 
               {/* Phone Input */}
               <View className="gap-1">
                 <Text className="text-sm text-muted">Phone Number</Text>
-                <View className="bg-background rounded-lg px-4 py-3 border border-border">
-                  <Text className="text-foreground">{newContact.phone || "Enter phone..."}</Text>
-                </View>
+                <TextInput
+                  placeholder="Enter phone number"
+                  placeholderTextColor={colors.muted}
+                  value={newContact.phone}
+                  onChangeText={(text) => setNewContact({ ...newContact, phone: text })}
+                  keyboardType="phone-pad"
+                  className="bg-background rounded-lg px-4 py-3 border border-border text-foreground"
+                />
               </View>
 
               {/* Relationship Selector */}
               <View className="gap-1">
                 <Text className="text-sm text-muted">Relationship</Text>
-                <View className="flex-row gap-2">
+                <View className="flex-row gap-2 flex-wrap">
                   {["Family", "Friend", "Doctor", "Other"].map((rel) => (
                     <Pressable
                       key={rel}
@@ -198,90 +156,83 @@ export default function ContactsScreen() {
                 </View>
               </View>
 
-              {/* Action Buttons */}
-              <View className="flex-row gap-2 mt-2">
-                <TouchableOpacity
-                  onPress={() => setShowAddForm(false)}
-                  className="flex-1 bg-muted rounded-lg py-3 items-center"
-                  activeOpacity={0.8}
-                >
-                  <Text className="font-semibold text-white">Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleAddContact}
-                  className="flex-1 bg-primary rounded-lg py-3 items-center"
-                  activeOpacity={0.8}
-                >
-                  <Text className="font-semibold text-white">Save Contact</Text>
-                </TouchableOpacity>
-              </View>
+              {/* Add Button */}
+              <TouchableOpacity
+                onPress={handleAddContact}
+                className="bg-success rounded-lg py-3 items-center mt-2 active:opacity-80"
+                activeOpacity={0.8}
+              >
+                <Text className="text-base font-semibold text-white">Add Contact</Text>
+              </TouchableOpacity>
             </View>
           )}
 
-          {/* Add Contact Button */}
-          {!showAddForm && (
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setShowAddForm(true);
-              }}
-              className="bg-primary rounded-2xl py-4 px-4 items-center"
-              activeOpacity={0.8}
-            >
-              <Text className="text-lg font-bold text-white">+ Add Emergency Contact</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Alert Settings */}
+          {/* Contacts List */}
           <View className="gap-3">
-            <Text className="text-lg font-semibold text-foreground">Alert Settings</Text>
-
-            {/* Auto-Alert Toggle */}
-            <View className="bg-surface rounded-2xl p-4 border border-border flex-row items-center justify-between">
-              <View className="flex-1">
-                <Text className="text-sm font-semibold text-foreground">Auto-Alert on High Risk</Text>
-                <Text className="text-xs text-muted mt-1">
-                  Automatically notify contacts when risk is critical
-                </Text>
-              </View>
-              <View className="w-12 h-12 rounded-lg bg-success items-center justify-center">
-                <Text className="text-lg">✓</Text>
-              </View>
-            </View>
-
-            {/* Alert Threshold */}
-            <View className="bg-surface rounded-2xl p-4 border border-border">
-              <Text className="text-sm font-semibold text-foreground mb-3">Alert Threshold</Text>
-              <View className="flex-row gap-2">
-                {["Yellow", "Red"].map((level) => (
-                  <Pressable
-                    key={level}
-                    onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-                    style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
-                  >
-                    <View
-                      className={`flex-1 px-4 py-3 rounded-lg ${
-                        level === "Red" ? "bg-error" : "bg-warning"
-                      }`}
-                    >
-                      <Text className="text-sm font-semibold text-white text-center">
-                        {level} Risk
-                      </Text>
+            {health.emergencyContacts.length > 0 ? (
+              health.emergencyContacts.map((contact) => (
+                <View
+                  key={contact.id}
+                  className="bg-surface rounded-lg p-4 border border-border"
+                >
+                  <View className="flex-row items-start justify-between mb-3">
+                    <View className="flex-1">
+                      <Text className="text-base font-semibold text-foreground">{contact.name}</Text>
+                      <Text className="text-sm text-muted mt-1">{contact.phone}</Text>
+                      <Text className="text-xs text-muted mt-1">{contact.relationship}</Text>
                     </View>
-                  </Pressable>
-                ))}
+
+                    {/* Delete Button */}
+                    <Pressable
+                      onPress={() => handleDeleteContact(contact.id)}
+                      style={({ pressed }) => [
+                        {
+                          opacity: pressed ? 0.7 : 1,
+                        },
+                      ]}
+                    >
+                      <View className="w-10 h-10 rounded-lg bg-error bg-opacity-10 items-center justify-center">
+                        <Text className="text-lg">🗑️</Text>
+                      </View>
+                    </Pressable>
+                  </View>
+
+                  {/* Toggle Notification */}
+                  <TouchableOpacity
+                    onPress={() => handleToggleNotification(contact.id)}
+                    className={`rounded-lg py-2 px-3 items-center ${
+                      contact.notifyEnabled ? "bg-success" : "bg-muted"
+                    }`}
+                    activeOpacity={0.8}
+                  >
+                    <Text className="text-sm font-semibold text-white">
+                      {contact.notifyEnabled ? "✓ Notifications Enabled" : "✗ Notifications Disabled"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ))
+            ) : (
+              <View className="bg-surface rounded-lg p-6 items-center justify-center border border-border">
+                <Text className="text-base text-muted">No emergency contacts added yet</Text>
               </View>
-            </View>
+            )}
           </View>
 
           {/* Test Alert Button */}
           <TouchableOpacity
             onPress={handleTestAlert}
-            className="bg-primary bg-opacity-10 rounded-2xl py-4 px-4 items-center border border-primary"
+            className="bg-primary rounded-lg py-3 px-4 items-center active:opacity-80"
             activeOpacity={0.8}
           >
-            <Text className="text-lg font-bold text-primary">📧 Send Test Alert</Text>
+            <Text className="text-base font-semibold text-white">Send Test Alert</Text>
           </TouchableOpacity>
+
+          {/* Info Box */}
+          <View className="bg-primary bg-opacity-10 rounded-lg p-3 border border-primary">
+            <Text className="text-xs text-primary leading-relaxed">
+              ℹ️ Emergency contacts will be notified automatically when a critical anaphylaxis risk is detected.
+            </Text>
+          </View>
         </View>
       </ScrollView>
     </ScreenContainer>

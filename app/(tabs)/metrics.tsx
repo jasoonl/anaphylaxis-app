@@ -15,7 +15,7 @@ import { useHealth } from "@/lib/health-context";
  * - Threshold indicators
  */
 
-type MetricType = "heartRate" | "gsr" | "temperature";
+type MetricType = "heartRate" | "skinHumidity" | "temperature";
 
 interface MetricData {
   current: number;
@@ -43,14 +43,14 @@ export default function MetricsScreen() {
       unit: "BPM",
       normalRange: { min: 60, max: 100 },
     },
-    gsr: {
-      current: health.vitalSigns.gsr,
-      min: 12.5,
-      max: 28.3,
-      average: 18.5,
-      baseline: 15,
-      unit: "µS",
-      normalRange: { min: 5, max: 20 },
+    skinHumidity: {
+      current: health.vitalSigns.skinHumidity,
+      min: 30,
+      max: 70,
+      average: 45,
+      baseline: 45,
+      unit: "%",
+      normalRange: { min: 20, max: 70 },
     },
     temperature: {
       current: health.vitalSigns.temperature,
@@ -106,7 +106,7 @@ export default function MetricsScreen() {
 
           {/* Metric Selector Tabs */}
           <View className="flex-row gap-2">
-            {(["heartRate", "gsr", "temperature"] as MetricType[]).map((metric) => (
+            {(["heartRate", "skinHumidity", "temperature"] as MetricType[]).map((metric) => (
               <Pressable
                 key={metric}
                 onPress={() => handleMetricPress(metric)}
@@ -127,7 +127,7 @@ export default function MetricsScreen() {
                     }`}
                   >
                     {metric === "heartRate" && "Heart Rate"}
-                    {metric === "gsr" && "Skin Response"}
+                    {metric === "skinHumidity" && "Skin Humidity"}
                     {metric === "temperature" && "Temperature"}
                   </Text>
                 </View>
@@ -262,7 +262,7 @@ export default function MetricsScreen() {
             <View className="bg-warning bg-opacity-10 rounded-2xl p-4 border border-warning">
               <Text className="text-sm font-semibold text-warning">⚠️ Threshold Alert</Text>
               <Text className="text-xs text-warning mt-1">
-                Your {selectedMetric === "heartRate" ? "heart rate" : selectedMetric === "gsr" ? "skin response" : "temperature"} is outside the normal range.
+                Your {selectedMetric === "heartRate" ? "heart rate" : selectedMetric === "skinHumidity" ? "skin humidity" : "temperature"} is outside the normal range.
                 Consider monitoring closely.
               </Text>
             </View>

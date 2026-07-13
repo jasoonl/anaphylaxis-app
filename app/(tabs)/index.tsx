@@ -181,13 +181,13 @@ export default function DashboardScreen() {
                 <Text className="text-xs text-muted mt-1">BPM</Text>
               </View>
 
-              {/* GSR */}
+              {/* Skin Humidity */}
               <View className="flex-1 min-w-[48%] bg-surface rounded-2xl p-4 border border-border">
-                <Text className="text-xs text-muted mb-2">Skin Response</Text>
+                <Text className="text-xs text-muted mb-2">Skin Humidity</Text>
                 <Text className="text-2xl font-bold text-foreground">
-                  {Math.round(health.vitalSigns.gsr * 10) / 10}
+                  {Math.round(health.vitalSigns.skinHumidity)}
                 </Text>
-                <Text className="text-xs text-muted mt-1">µS</Text>
+                <Text className="text-xs text-muted mt-1">%</Text>
               </View>
 
               {/* Temperature */}

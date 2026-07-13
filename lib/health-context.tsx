@@ -13,10 +13,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
  */
 
 export interface VitalSigns {
-  heartRate: number;
-  gsr: number;
-  temperature: number;
+  heartRate: number; // BPM (Pulse Sensor)
+  bloodPressureSystolic: number; // mmHg (Blood Pressure Sensor)
+  bloodPressureDiastolic: number; // mmHg (Blood Pressure Sensor)
+  skinHumidity: number; // % (BME280 TEWL)
+  temperature: number; // °C (Temperature Sensor)
   timestamp: number;
+  // Legacy fields for backward compatibility
+  gsr?: number; // Deprecated - use skinHumidity instead
 }
 
 export interface RiskState {
@@ -79,10 +83,13 @@ const HealthContext = createContext<HealthContextType | undefined>(undefined);
 
 export function HealthProvider({ children }: { children: ReactNode }) {
   const [vitalSigns, setVitalSigns] = useState<VitalSigns>({
-    heartRate: 72,
-    gsr: 15,
-    temperature: 36.8,
+    heartRate: 72, // BPM
+    bloodPressureSystolic: 120, // mmHg
+    bloodPressureDiastolic: 80, // mmHg
+    skinHumidity: 45, // %
+    temperature: 36.8, // °C
     timestamp: Date.now(),
+    gsr: 15, // Legacy field
   });
 
   const [riskState, setRiskState] = useState<RiskState>({
