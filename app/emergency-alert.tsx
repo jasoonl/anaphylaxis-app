@@ -152,9 +152,11 @@ export default function EmergencyAlertScreen() {
                   • Heart Rate: {Math.round(health.vitalSigns.heartRate)} BPM (bradycardia)
                 </Text>
               )}
-              {health.vitalSigns.skinHumidity > DEFAULT_THRESHOLDS.conductanceElevated && (
+              {health.vitalSigns.skinHumidity - DEFAULT_THRESHOLDS.tewlBaseline > DEFAULT_THRESHOLDS.tewlRiseThreshold && (
                 <Text className="text-xs text-white">
-                  • Skin Conductance: {Math.round(health.vitalSigns.skinHumidity)} (elevated - possible diaphoresis)
+                  • Skin Water Loss (TEWL): +
+                  {Math.round((health.vitalSigns.skinHumidity - DEFAULT_THRESHOLDS.tewlBaseline) * 10) / 10} g/m²/h from
+                  baseline (rising)
                 </Text>
               )}
               {health.vitalSigns.temperature > DEFAULT_THRESHOLDS.temperatureFever && (

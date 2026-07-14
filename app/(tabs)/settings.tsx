@@ -308,15 +308,27 @@ export default function SettingsScreen() {
                 </Text>
               </View>
               <View>
-                <Text className="text-xs text-muted mb-1">Skin Conductance Elevated</Text>
+                <Text className="text-xs text-muted mb-1">TEWL Baseline</Text>
                 <Text className="text-lg font-semibold text-foreground">
-                  {DEFAULT_THRESHOLDS.conductanceElevated}
+                  {DEFAULT_THRESHOLDS.tewlBaseline} g/m²/h
                 </Text>
               </View>
               <View>
-                <Text className="text-xs text-muted mb-1">Skin Conductance High</Text>
+                <Text className="text-xs text-muted mb-1">TEWL Rise Threshold</Text>
                 <Text className="text-lg font-semibold text-foreground">
-                  {DEFAULT_THRESHOLDS.conductanceHigh}
+                  +{DEFAULT_THRESHOLDS.tewlRiseThreshold} g/m²/h
+                </Text>
+              </View>
+              <View>
+                <Text className="text-xs text-muted mb-1">TEWL Reaction Mean Rise</Text>
+                <Text className="text-lg font-semibold text-foreground">
+                  +{DEFAULT_THRESHOLDS.tewlReactionMean} g/m²/h
+                </Text>
+              </View>
+              <View>
+                <Text className="text-xs text-muted mb-1">TEWL Severe Reaction Mean Rise</Text>
+                <Text className="text-lg font-semibold text-foreground">
+                  +{DEFAULT_THRESHOLDS.tewlSevereReactionMean} g/m²/h
                 </Text>
               </View>
               <View>
@@ -344,10 +356,13 @@ export default function SettingsScreen() {
                 </Text>
               </View>
               <Text className="text-xs text-muted leading-relaxed mt-1">
-                Sourced from NIAID/FAAN (Sampson 2006) and Brown (2004) anaphylaxis severity
-                grading. Heart rate is weighted most heavily (validated diagnostic marker);
-                skin conductance and temperature are weighted lighter, as neither has a
-                formal clinical threshold specific to anaphylaxis.
+                Heart rate thresholds sourced from NIAID/FAAN (Sampson 2006) and Brown (2004)
+                anaphylaxis severity grading - formal diagnostic criteria. TEWL thresholds
+                sourced from Schuler et al., J Clin Invest 2023 (rise from personal baseline
+                predicts anaphylaxis: 100% sensitive at +1 g/m²/h, but the study is explicit
+                this is not specific without a corroborating sign - not yet a formal
+                diagnostic criterion). Temperature is not part of any anaphylaxis criteria and
+                is weighted lightest.
               </Text>
             </View>
           </View>
