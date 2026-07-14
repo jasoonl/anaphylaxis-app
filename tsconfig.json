@@ -2,6 +2,7 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    "allowArbitraryExtensions": true,
     "types": [
       "node",
       "nativewind/types"
