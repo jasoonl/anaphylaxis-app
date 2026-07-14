@@ -165,6 +165,31 @@ export default function DashboardScreen() {
                   {health.riskState.trend === "stable" && "➡️ Stable"}
                 </Text>
               </View>
+
+              {/* Risk Range Legend */}
+              <View className="flex-row gap-4 mt-1">
+                <View className="items-center gap-1">
+                  <View className="flex-row items-center gap-1">
+                    <View className="w-2 h-2 rounded-full" style={{ backgroundColor: colors.success }} />
+                    <Text className="text-xs font-semibold text-foreground">Safe</Text>
+                  </View>
+                  <Text className="text-xs text-muted">0-39</Text>
+                </View>
+                <View className="items-center gap-1">
+                  <View className="flex-row items-center gap-1">
+                    <View className="w-2 h-2 rounded-full" style={{ backgroundColor: colors.warning }} />
+                    <Text className="text-xs font-semibold text-foreground">Cautious</Text>
+                  </View>
+                  <Text className="text-xs text-muted">40-69</Text>
+                </View>
+                <View className="items-center gap-1">
+                  <View className="flex-row items-center gap-1">
+                    <View className="w-2 h-2 rounded-full" style={{ backgroundColor: colors.error }} />
+                    <Text className="text-xs font-semibold text-foreground">Danger</Text>
+                  </View>
+                  <Text className="text-xs text-muted">70-100</Text>
+                </View>
+              </View>
             </View>
           </Pressable>
 
