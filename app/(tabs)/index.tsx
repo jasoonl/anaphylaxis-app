@@ -49,7 +49,7 @@ export default function DashboardScreen() {
     const unsubscribe = bleManager.onSensorData((data) => {
       health.updateVitalSigns({
         heartRate: data.heartRate,
-        gsr: data.gsr,
+        skinHumidity: data.gsr,
         temperature: data.temperature,
       });
     });
@@ -87,7 +87,7 @@ export default function DashboardScreen() {
     });
 
     setPrevScore(riskFactors.combinedScore);
-  }, [health.vitalSigns.heartRate, health.vitalSigns.gsr, health.vitalSigns.temperature]);
+  }, [health.vitalSigns.heartRate, health.vitalSigns.skinHumidity, health.vitalSigns.temperature]);
 
   const getRiskColor = () => {
     switch (health.riskState.level) {

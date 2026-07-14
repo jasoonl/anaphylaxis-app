@@ -143,16 +143,25 @@ export default function SettingsScreen() {
               <View className="bg-surface rounded-2xl p-4 border border-border gap-3">
                 <View className="gap-1">
                   <Text className="text-sm text-muted">Name</Text>
-                  <View className="bg-background rounded-lg px-4 py-3 border border-border">
-                    <Text className="text-foreground">{tempProfile.name}</Text>
-                  </View>
+                  <TextInput
+                    value={tempProfile.name}
+                    onChangeText={(text) => setTempProfile({ ...tempProfile, name: text })}
+                    placeholder="Enter your name"
+                    placeholderTextColor={colors.muted}
+                    className="bg-background rounded-lg px-4 py-3 border border-border text-foreground"
+                  />
                 </View>
 
                 <View className="gap-1">
                   <Text className="text-sm text-muted">Known Allergies</Text>
-                  <View className="bg-background rounded-lg px-4 py-3 border border-border">
-                    <Text className="text-foreground">{tempProfile.allergies}</Text>
-                  </View>
+                  <TextInput
+                    value={tempProfile.allergies}
+                    onChangeText={(text) => setTempProfile({ ...tempProfile, allergies: text })}
+                    placeholder="e.g. Peanuts, Tree nuts"
+                    placeholderTextColor={colors.muted}
+                    multiline
+                    className="bg-background rounded-lg px-4 py-3 border border-border text-foreground"
+                  />
                 </View>
 
                 <View className="gap-1">
