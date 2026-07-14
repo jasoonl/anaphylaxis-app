@@ -4,6 +4,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import * as Haptics from "expo-haptics";
 import { useHealth } from "@/lib/health-context";
+import { sendEmergencyText, buildEmergencyMessage } from "@/lib/sms-service";
 import { router } from "expo-router";
 
 /**
@@ -78,30 +79,20 @@ export default function EmergencyAlertScreen() {
   const handleNotifyContacts = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    const enabledContacts = health.emergencyContacts.filter((c) => c.notifyEnabled);
+    const message = buildEmergencyMessage(health.riskState.score, health.userProfile.name);
+    const result = await sendEmergencyText(health.emergencyContacts, message);
 
-    if (enabledContacts.length === 0) {
-      Alert.alert("No Contacts", "No emergency contacts are enabled for notifications.");
-      return;
+    if (result.sent) {
+      setNotifiedContacts(result.notifiedNames);
+      health.addAlertToHistory("critical", health.riskState.score);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     }
 
-    // Simulate sending notifications
-    const contactNames = enabledContacts.map((c) => c.name);
-    setNotifiedContacts(contactNames);
-
-    // Log alert to history
-    enabledContacts.forEach((contact) => {
-      console.log(`SMS Alert sent to ${contact.name} (${contact.phone})`);
-    });
-
-    Alert.alert(
-      "Contacts Notified",
-      `Emergency alert sent to:\n${contactNames.join("\n")}`,
-      [{ text: "OK", onPress: () => {} }]
-    );
-
-    // Add to alert history
-    health.addAlertToHistory("critical", health.riskState.score);
+    Alert.alert(result.sent ? "Contacts Notified" : "Not Sent", result.message, [
+      { text: "OK", onPress: () => {} },
+    ]);
   };
 
   const handleAdministerEpinephrine = () => {

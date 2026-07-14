@@ -1,10 +1,11 @@
-import { ScrollView, Text, View, TouchableOpacity, Pressable, Alert, TextInput } from "react-native";
+import { ScrollView, Text, View, TouchableOpacity, Pressable, Alert, TextInput, Linking } from "react-native";
 import { useState } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import * as Haptics from "expo-haptics";
 import { useHealth } from "@/lib/health-context";
 import { withOpacity } from "@/lib/utils";
+import { sendEmergencyText, buildEmergencyMessage } from "@/lib/sms-service";
 
 /**
  * Emergency Contacts Screen
@@ -69,9 +70,21 @@ export default function ContactsScreen() {
     }
   };
 
-  const handleTestAlert = () => {
+  const handleTestAlert = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert("Test Alert Sent", "A test notification has been sent to all enabled contacts.");
+    const message = buildEmergencyMessage(health.riskState.score, health.userProfile.name) + " (This is a test.)";
+    const result = await sendEmergencyText(health.emergencyContacts, message);
+    if (result.sent) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    }
+    Alert.alert(result.sent ? "Test Alert Sent" : "Test Alert Not Sent", result.message);
+  };
+
+  const handleCallContact = (phone: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Linking.openURL(`tel:${phone.replace(/[^0-9+]/g, "")}`);
   };
 
   return (
@@ -183,22 +196,41 @@ export default function ContactsScreen() {
                       <Text className="text-xs text-muted mt-1">{contact.relationship}</Text>
                     </View>
 
-                    {/* Delete Button */}
-                    <Pressable
-                      onPress={() => handleDeleteContact(contact.id)}
-                      style={({ pressed }) => [
-                        {
-                          opacity: pressed ? 0.7 : 1,
-                        },
-                      ]}
-                    >
-                      <View
-                        className="w-10 h-10 rounded-lg items-center justify-center"
-                        style={{ backgroundColor: withOpacity(colors.error, 0.1) }}
+                    <View className="flex-row gap-2">
+                      {/* Call Button */}
+                      <Pressable
+                        onPress={() => handleCallContact(contact.phone)}
+                        style={({ pressed }) => [
+                          {
+                            opacity: pressed ? 0.7 : 1,
+                          },
+                        ]}
                       >
-                        <Text className="text-lg">🗑️</Text>
-                      </View>
-                    </Pressable>
+                        <View
+                          className="w-10 h-10 rounded-lg items-center justify-center"
+                          style={{ backgroundColor: withOpacity(colors.success, 0.1) }}
+                        >
+                          <Text className="text-lg">📞</Text>
+                        </View>
+                      </Pressable>
+
+                      {/* Delete Button */}
+                      <Pressable
+                        onPress={() => handleDeleteContact(contact.id)}
+                        style={({ pressed }) => [
+                          {
+                            opacity: pressed ? 0.7 : 1,
+                          },
+                        ]}
+                      >
+                        <View
+                          className="w-10 h-10 rounded-lg items-center justify-center"
+                          style={{ backgroundColor: withOpacity(colors.error, 0.1) }}
+                        >
+                          <Text className="text-lg">🗑️</Text>
+                        </View>
+                      </Pressable>
+                    </View>
                   </View>
 
                   {/* Toggle Notification */}
