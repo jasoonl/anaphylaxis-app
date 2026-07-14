@@ -47,11 +47,11 @@ export default function MetricsScreen() {
     skinHumidity: {
       current: health.vitalSigns.skinHumidity,
       min: 8,
-      max: 22,
-      average: 15,
-      baseline: 15,
-      unit: "%",
-      normalRange: { min: 5, max: 20 },
+      max: 13,
+      average: 10,
+      baseline: 10,
+      unit: "g/m²/h",
+      normalRange: { min: 5, max: 11 },
     },
     temperature: {
       current: health.vitalSigns.temperature,
@@ -128,7 +128,7 @@ export default function MetricsScreen() {
                     }`}
                   >
                     {metric === "heartRate" && "Heart Rate"}
-                    {metric === "skinHumidity" && "Skin Humidity"}
+                    {metric === "skinHumidity" && "Skin Water Loss"}
                     {metric === "temperature" && "Temperature"}
                   </Text>
                 </View>
@@ -266,7 +266,7 @@ export default function MetricsScreen() {
             >
               <Text className="text-sm font-semibold text-warning">⚠️ Threshold Alert</Text>
               <Text className="text-xs text-warning mt-1">
-                Your {selectedMetric === "heartRate" ? "heart rate" : selectedMetric === "skinHumidity" ? "skin humidity" : "temperature"} is outside the normal range.
+                Your {selectedMetric === "heartRate" ? "heart rate" : selectedMetric === "skinHumidity" ? "skin water loss (TEWL)" : "temperature"} is outside the normal range.
                 Consider monitoring closely.
               </Text>
             </View>

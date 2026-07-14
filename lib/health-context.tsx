@@ -16,7 +16,7 @@ export interface VitalSigns {
   heartRate: number; // BPM (Pulse Sensor)
   bloodPressureSystolic: number; // mmHg (Blood Pressure Sensor)
   bloodPressureDiastolic: number; // mmHg (Blood Pressure Sensor)
-  skinHumidity: number; // % (BME280 TEWL)
+  skinHumidity: number; // g/m2/h - transepidermal water loss (TEWL), see Schuler et al. 2023
   temperature: number; // °C (Temperature Sensor)
   timestamp: number;
   // Legacy fields for backward compatibility
@@ -86,7 +86,7 @@ export function HealthProvider({ children }: { children: ReactNode }) {
     heartRate: 72, // BPM
     bloodPressureSystolic: 120, // mmHg
     bloodPressureDiastolic: 80, // mmHg
-    skinHumidity: 45, // %
+    skinHumidity: 10, // g/m2/h - Schuler et al. cohort baseline mean
     temperature: 36.8, // °C
     timestamp: Date.now(),
     gsr: 15, // Legacy field

@@ -13,7 +13,7 @@ export interface BLEDevice {
 
 export interface SensorData {
   heartRate: number;
-  gsr: number;
+  gsr: number; // g/m2/h - transepidermal water loss (TEWL); field name kept for compatibility
   temperature: number;
   timestamp: number;
 }
@@ -28,7 +28,7 @@ class BLEManager {
 
   // Smooth random-walk state so values drift realistically instead of jumping every tick
   private simHeartRate = 72;
-  private simGsr = 15;
+  private simGsr = 10; // g/m2/h - TEWL baseline (Schuler et al. 2023 cohort mean)
   private simTemperature = 36.8;
 
   // Episode state machine: occasionally simulates a reaction building and resolving,
@@ -38,8 +38,8 @@ class BLEManager {
   private episodeTicksRemaining = 0;
   private episodeTargets = { heartRate: 72, gsr: 15, temperature: 36.8 };
 
-  private readonly BASELINE = { heartRate: 72, gsr: 15, temperature: 36.8 };
-  private readonly EPISODE_PEAK = { heartRate: 132, gsr: 38, temperature: 38.3 };
+  private readonly BASELINE = { heartRate: 72, gsr: 10, temperature: 36.8 };
+  private readonly EPISODE_PEAK = { heartRate: 132, gsr: 13.5, temperature: 38.3 }; // gsr = baseline + severe reaction mean rise (Schuler et al.)
 
 
   /**
@@ -141,12 +141,12 @@ class BLEManager {
 
     // Random walk: step a fraction of the way toward the current target, plus jitter
     this.simHeartRate = this.step(this.simHeartRate, target.heartRate, 6, 1.2);
-    this.simGsr = this.step(this.simGsr, target.gsr, 3, 0.8);
+    this.simGsr = this.step(this.simGsr, target.gsr, 1, 0.3);
     this.simTemperature = this.step(this.simTemperature, target.temperature, 0.15, 0.05);
 
     return {
       heartRate: Math.max(45, Math.min(160, this.simHeartRate)),
-      gsr: Math.max(3, Math.min(55, this.simGsr)),
+      gsr: Math.max(5, Math.min(20, this.simGsr)),
       temperature: Math.max(34.5, Math.min(39.5, this.simTemperature)),
       timestamp: Date.now(),
     };
