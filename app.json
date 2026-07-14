@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "anaphylaxis-app-fresh",
-    "slug": "anaphylaxis-app-fresh",
+    "name": "Anaphylaxis Guard",
+    "slug": "anaphylaxis-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "anaphylaxisappfresh",
+    "icon": "./assets/icon.png",
+    "scheme": "anaphylaxisguard",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "bundleIdentifier": "com.manus.anaphylaxisguard"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +21,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/icon.png"
     },
     "plugins": [
       "expo-router",

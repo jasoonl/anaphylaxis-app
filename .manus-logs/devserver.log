@@ -1,0 +1,9 @@
+[2026-07-14T01:29:14.508Z] [1] › Detected a change in metro.config.js. Restart the server to see the new results.
+[2026-07-14T01:29:14.508Z] [1] › Detected a change in babel.config.js. Restart the server to see the new results. You may need to clear the bundler cache with the --clear flag for your changes to take effect.
+[2026-07-14T01:29:52.227Z] [1] pnpm dev:metro exited with code 0
+[2026-07-14T01:29:52.228Z] --> Sending SIGTERM to other processes..
+[2026-07-14T01:29:52.294Z] [0]  ELIFECYCLE  Command failed.
+[2026-07-14T01:29:52.340Z] [0] 1:29:52 AM [tsx] Previous process hasn't exited yet. Force killing...
+[2026-07-14T01:29:52.376Z] [0] pnpm dev:server exited with code SIGTERM
+[2026-07-14T01:29:52.387Z] ELIFECYCLE  Command failed with exit code 1.
+[2026-07-14T01:29:52.430Z] Dev server exited with code 1
