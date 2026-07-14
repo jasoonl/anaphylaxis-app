@@ -4,6 +4,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import * as Haptics from "expo-haptics";
 import { useHealth } from "@/lib/health-context";
+import { withOpacity } from "@/lib/utils";
 
 /**
  * Emergency Contacts Screen
@@ -191,7 +192,10 @@ export default function ContactsScreen() {
                         },
                       ]}
                     >
-                      <View className="w-10 h-10 rounded-lg bg-error/10 items-center justify-center">
+                      <View
+                        className="w-10 h-10 rounded-lg items-center justify-center"
+                        style={{ backgroundColor: withOpacity(colors.error, 0.1) }}
+                      >
                         <Text className="text-lg">🗑️</Text>
                       </View>
                     </Pressable>
@@ -228,7 +232,10 @@ export default function ContactsScreen() {
           </TouchableOpacity>
 
           {/* Info Box */}
-          <View className="bg-primary/10 rounded-lg p-3 border border-primary">
+          <View
+            className="rounded-lg p-3 border border-primary"
+            style={{ backgroundColor: withOpacity(colors.primary, 0.1) }}
+          >
             <Text className="text-xs text-primary leading-relaxed">
               ℹ️ Emergency contacts will be notified automatically when a critical anaphylaxis risk is detected.
             </Text>

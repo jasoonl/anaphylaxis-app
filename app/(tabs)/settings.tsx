@@ -4,6 +4,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import * as Haptics from "expo-haptics";
 import { useHealth } from "@/lib/health-context";
+import { withOpacity } from "@/lib/utils";
 
 /**
  * Settings Screen
@@ -328,7 +329,10 @@ export default function SettingsScreen() {
             </View>
 
             {/* Medical Disclaimer */}
-            <View className="bg-warning/10 rounded-lg p-3 border border-warning">
+            <View
+              className="rounded-lg p-3 border border-warning"
+              style={{ backgroundColor: withOpacity(colors.warning, 0.1) }}
+            >
               <Text className="text-xs font-semibold text-warning mb-2">⚠️ Medical Disclaimer</Text>
               <Text className="text-xs text-warning leading-relaxed">
                 This app is a prototype companion tool and should not be used as a standalone medical diagnostic device. Always consult with healthcare professionals for medical advice.

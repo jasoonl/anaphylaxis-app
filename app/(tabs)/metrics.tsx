@@ -4,6 +4,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import * as Haptics from "expo-haptics";
 import { useHealth } from "@/lib/health-context";
+import { withOpacity } from "@/lib/utils";
 
 /**
  * Health Metrics Screen
@@ -259,7 +260,10 @@ export default function MetricsScreen() {
 
           {/* Threshold Alert */}
           {isAbnormal(currentMetric.current, currentMetric.normalRange) && (
-            <View className="bg-warning/10 rounded-2xl p-4 border border-warning">
+            <View
+              className="rounded-2xl p-4 border border-warning"
+              style={{ backgroundColor: withOpacity(colors.warning, 0.1) }}
+            >
               <Text className="text-sm font-semibold text-warning">⚠️ Threshold Alert</Text>
               <Text className="text-xs text-warning mt-1">
                 Your {selectedMetric === "heartRate" ? "heart rate" : selectedMetric === "skinHumidity" ? "skin humidity" : "temperature"} is outside the normal range.
