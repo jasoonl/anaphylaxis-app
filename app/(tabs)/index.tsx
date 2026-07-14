@@ -146,7 +146,8 @@ export default function DashboardScreen() {
                 className="w-32 h-32 rounded-full items-center justify-center"
                 style={{ backgroundColor: getRiskColor() }}
               >
-                <Text className="text-5xl font-bold text-white">{health.riskState.score}</Text>
+                <Text className="text-5xl font-bold text-white">{Math.round(health.riskState.score)}</Text>
+                <Text className="text-xs font-semibold text-white">/ 10</Text>
               </View>
 
               {/* Risk Label */}
@@ -173,21 +174,21 @@ export default function DashboardScreen() {
                     <View className="w-2 h-2 rounded-full" style={{ backgroundColor: colors.success }} />
                     <Text className="text-xs font-semibold text-foreground">Safe</Text>
                   </View>
-                  <Text className="text-xs text-muted">0-39</Text>
+                  <Text className="text-xs text-muted">0-3</Text>
                 </View>
                 <View className="items-center gap-1">
                   <View className="flex-row items-center gap-1">
                     <View className="w-2 h-2 rounded-full" style={{ backgroundColor: colors.warning }} />
                     <Text className="text-xs font-semibold text-foreground">Cautious</Text>
                   </View>
-                  <Text className="text-xs text-muted">40-69</Text>
+                  <Text className="text-xs text-muted">4-6</Text>
                 </View>
                 <View className="items-center gap-1">
                   <View className="flex-row items-center gap-1">
                     <View className="w-2 h-2 rounded-full" style={{ backgroundColor: colors.error }} />
                     <Text className="text-xs font-semibold text-foreground">Danger</Text>
                   </View>
-                  <Text className="text-xs text-muted">70-100</Text>
+                  <Text className="text-xs text-muted">7-10</Text>
                 </View>
               </View>
             </View>

@@ -94,7 +94,7 @@ export function HealthProvider({ children }: { children: ReactNode }) {
 
   const [riskState, setRiskState] = useState<RiskState>({
     level: "safe",
-    score: 15,
+    score: 0,
     trend: "stable",
     timestamp: Date.now(),
   });
