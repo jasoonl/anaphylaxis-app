@@ -130,14 +130,18 @@ export default function EmergencyAlertScreen() {
           <View className="gap-2 items-center">
             <Text className="text-6xl">🚨</Text>
             <Text className="text-3xl font-bold text-white text-center">EMERGENCY</Text>
-            <Text className="text-base text-white text-center">Critical Risk Detected</Text>
+            <Text className="text-base text-white text-center">
+              {health.riskState.level === "critical"
+                ? "Critical Risk Detected"
+                : "Manually Triggered Alert"}
+            </Text>
             <Text className="text-xs text-white text-center mt-1">
               Risk Score: {health.riskState.score}/100
             </Text>
           </View>
 
           {/* Vital Signs Alert */}
-          <View className="bg-white bg-opacity-10 rounded-xl p-3 gap-2 border border-white border-opacity-20">
+          <View className="bg-white/10 rounded-xl p-3 gap-2 border border-white/20">
             <Text className="text-xs font-semibold text-white mb-1">⚠️ Abnormal Readings:</Text>
             <View className="gap-1">
               {health.vitalSigns.heartRate > 120 && (
@@ -174,23 +178,23 @@ export default function EmergencyAlertScreen() {
             {/* Administer Epinephrine */}
             <TouchableOpacity
               onPress={handleAdministerEpinephrine}
-              className="bg-white bg-opacity-20 rounded-lg py-3 px-3 items-center border border-white active:opacity-70"
+              className="bg-white/20 rounded-lg py-3 px-3 items-center border border-white active:opacity-70"
               activeOpacity={0.8}
             >
               <Text className="text-xl mb-0.5">💉</Text>
               <Text className="text-sm font-bold text-white">Administer Epinephrine</Text>
-              <Text className="text-xs text-white text-opacity-80 mt-0.5">EpiPen Instructions</Text>
+              <Text className="text-xs text-white/80 mt-0.5">EpiPen Instructions</Text>
             </TouchableOpacity>
 
             {/* Notify Contacts */}
             <TouchableOpacity
               onPress={handleNotifyContacts}
-              className="bg-white bg-opacity-20 rounded-lg py-3 px-3 items-center border border-white active:opacity-70"
+              className="bg-white/20 rounded-lg py-3 px-3 items-center border border-white active:opacity-70"
               activeOpacity={0.8}
             >
               <Text className="text-xl mb-0.5">📧</Text>
               <Text className="text-sm font-bold text-white">Notify Contacts</Text>
-              <Text className="text-xs text-white text-opacity-80 mt-0.5">
+              <Text className="text-xs text-white/80 mt-0.5">
                 {notifiedContacts.length > 0
                   ? `Notified: ${notifiedContacts.join(", ")}`
                   : `${health.emergencyContacts.filter((c) => c.notifyEnabled).length} contacts enabled`}
@@ -200,8 +204,8 @@ export default function EmergencyAlertScreen() {
 
           {/* Countdown Timer */}
           <View className="items-center gap-2">
-            <Text className="text-xs text-white text-opacity-80">Auto-dismiss in</Text>
-            <View className="w-14 h-14 rounded-full bg-white bg-opacity-20 border-2 border-white items-center justify-center">
+            <Text className="text-xs text-white/80">Auto-dismiss in</Text>
+            <View className="w-14 h-14 rounded-full bg-white/20 border-2 border-white items-center justify-center">
               <Text className="text-2xl font-bold text-white">{countdownSeconds}</Text>
             </View>
           </View>
@@ -209,15 +213,15 @@ export default function EmergencyAlertScreen() {
           {/* Dismiss Button */}
           <TouchableOpacity
             onPress={handleDismiss}
-            className="bg-white bg-opacity-20 rounded-lg py-3 px-3 items-center border border-white active:opacity-70"
+            className="bg-white/20 rounded-lg py-3 px-3 items-center border border-white active:opacity-70"
             activeOpacity={0.8}
           >
             <Text className="text-sm font-semibold text-white">Dismiss Alert</Text>
           </TouchableOpacity>
 
           {/* Medical Disclaimer */}
-          <View className="bg-white bg-opacity-10 rounded-lg p-2 border border-white border-opacity-20">
-            <Text className="text-xs text-white text-opacity-80 text-center leading-relaxed">
+          <View className="bg-white/10 rounded-lg p-2 border border-white/20">
+            <Text className="text-xs text-white/80 text-center leading-relaxed">
               This app is a prototype companion tool. Always call 911 for medical emergencies.
               Do not rely solely on this app for diagnosis or treatment decisions.
             </Text>

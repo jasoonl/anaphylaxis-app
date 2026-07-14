@@ -191,7 +191,7 @@ export default function ContactsScreen() {
                         },
                       ]}
                     >
-                      <View className="w-10 h-10 rounded-lg bg-error bg-opacity-10 items-center justify-center">
+                      <View className="w-10 h-10 rounded-lg bg-error/10 items-center justify-center">
                         <Text className="text-lg">🗑️</Text>
                       </View>
                     </Pressable>
@@ -228,7 +228,7 @@ export default function ContactsScreen() {
           </TouchableOpacity>
 
           {/* Info Box */}
-          <View className="bg-primary bg-opacity-10 rounded-lg p-3 border border-primary">
+          <View className="bg-primary/10 rounded-lg p-3 border border-primary">
             <Text className="text-xs text-primary leading-relaxed">
               ℹ️ Emergency contacts will be notified automatically when a critical anaphylaxis risk is detected.
             </Text>

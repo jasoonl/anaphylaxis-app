@@ -259,7 +259,7 @@ export default function MetricsScreen() {
 
           {/* Threshold Alert */}
           {isAbnormal(currentMetric.current, currentMetric.normalRange) && (
-            <View className="bg-warning bg-opacity-10 rounded-2xl p-4 border border-warning">
+            <View className="bg-warning/10 rounded-2xl p-4 border border-warning">
               <Text className="text-sm font-semibold text-warning">⚠️ Threshold Alert</Text>
               <Text className="text-xs text-warning mt-1">
                 Your {selectedMetric === "heartRate" ? "heart rate" : selectedMetric === "skinHumidity" ? "skin humidity" : "temperature"} is outside the normal range.

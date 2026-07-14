@@ -18,11 +18,29 @@ export interface SensorData {
   timestamp: number;
 }
 
+type EpisodePhase = "normal" | "rising" | "peak" | "recovering";
+
 class BLEManager {
   private isConnected = false;
   private currentDevice: BLEDevice | null = null;
   private listeners: Array<(data: SensorData) => void> = [];
   private simulationInterval: ReturnType<typeof setInterval> | null = null;
+
+  // Smooth random-walk state so values drift realistically instead of jumping every tick
+  private simHeartRate = 72;
+  private simGsr = 15;
+  private simTemperature = 36.8;
+
+  // Episode state machine: occasionally simulates a reaction building and resolving,
+  // so heart rate / skin humidity / temperature all sweep through Safe, Warning, and
+  // Critical ranges during demo mode instead of staying flat forever.
+  private episodePhase: EpisodePhase = "normal";
+  private episodeTicksRemaining = 0;
+  private episodeTargets = { heartRate: 72, gsr: 15, temperature: 36.8 };
+
+  private readonly BASELINE = { heartRate: 72, gsr: 15, temperature: 36.8 };
+  private readonly EPISODE_PEAK = { heartRate: 132, gsr: 38, temperature: 38.3 };
+
 
   /**
    * Initialize BLE and scan for devices
@@ -106,20 +124,67 @@ class BLEManager {
   }
 
   /**
-   * Generate simulated sensor data for demo mode
+   * Generate simulated sensor data for demo mode.
+   *
+   * Uses a smooth random walk toward a moving target, rather than independent
+   * random noise each tick, so values drift realistically. An episode state
+   * machine occasionally (roughly every 30-90s) ramps vitals up into Warning
+   * and Critical territory over ~15s, holds briefly, then recovers over ~20s -
+   * simulating a reaction building and resolving so every risk level and all
+   * three metrics are actually exercised during testing, not just the safe range.
    */
   private generateSensorData(): SensorData {
-    // Simulate realistic vital sign variations
-    const baseHeartRate = 72;
-    const baseGSR = 15;
-    const baseTemp = 36.8;
+    this.advanceEpisode();
+
+    const target =
+      this.episodePhase === "normal" ? this.BASELINE : this.episodeTargets;
+
+    // Random walk: step a fraction of the way toward the current target, plus jitter
+    this.simHeartRate = this.step(this.simHeartRate, target.heartRate, 6, 1.2);
+    this.simGsr = this.step(this.simGsr, target.gsr, 3, 0.8);
+    this.simTemperature = this.step(this.simTemperature, target.temperature, 0.15, 0.05);
 
     return {
-      heartRate: Math.max(60, Math.min(120, baseHeartRate + (Math.random() - 0.5) * 8)),
-      gsr: Math.max(5, Math.min(50, baseGSR + (Math.random() - 0.5) * 4)),
-      temperature: Math.max(35.5, Math.min(38.5, baseTemp + (Math.random() - 0.5) * 0.6)),
+      heartRate: Math.max(45, Math.min(160, this.simHeartRate)),
+      gsr: Math.max(3, Math.min(55, this.simGsr)),
+      temperature: Math.max(34.5, Math.min(39.5, this.simTemperature)),
       timestamp: Date.now(),
     };
+  }
+
+  /** Moves `current` a step toward `target`, with a bit of random jitter added. */
+  private step(current: number, target: number, maxStep: number, jitter: number): number {
+    const direction = target - current;
+    const move = Math.sign(direction) * Math.min(Math.abs(direction) * 0.25, maxStep);
+    const noise = (Math.random() - 0.5) * jitter;
+    return current + move + noise;
+  }
+
+  /** Advances the episode state machine by one tick (called once per generated sample). */
+  private advanceEpisode(): void {
+    if (this.episodePhase === "normal") {
+      // ~3% chance per second to start a new episode (roughly every ~30-90s in practice)
+      if (Math.random() < 0.03) {
+        this.episodePhase = "rising";
+        this.episodeTicksRemaining = 12 + Math.floor(Math.random() * 8); // ~12-20s ramp up
+        this.episodeTargets = { ...this.EPISODE_PEAK };
+      }
+      return;
+    }
+
+    this.episodeTicksRemaining -= 1;
+    if (this.episodeTicksRemaining > 0) return;
+
+    if (this.episodePhase === "rising") {
+      this.episodePhase = "peak";
+      this.episodeTicksRemaining = 5 + Math.floor(Math.random() * 6); // hold ~5-10s
+    } else if (this.episodePhase === "peak") {
+      this.episodePhase = "recovering";
+      this.episodeTicksRemaining = 18 + Math.floor(Math.random() * 10); // ~18-27s recovery
+      this.episodeTargets = { ...this.BASELINE };
+    } else if (this.episodePhase === "recovering") {
+      this.episodePhase = "normal";
+    }
   }
 
   /**
