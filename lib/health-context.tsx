@@ -143,7 +143,24 @@ export function HealthProvider({ children }: { children: ReactNode }) {
         AsyncStorage.getItem("alertHistory"),
       ]);
 
-      if (contactsData) setEmergencyContacts(JSON.parse(contactsData));
+      if (contactsData) {
+        const storedContacts: EmergencyContact[] = JSON.parse(contactsData);
+        // One-time migration: devices that ran the app before the real contacts
+        // were added still have the old placeholder "Mom"/"Dr. Smith" entries
+        // persisted in AsyncStorage, which otherwise silently override the new
+        // in-code defaults on every load. Replace them automatically, once.
+        const isStalePlaceholderSet =
+          storedContacts.length === 2 &&
+          storedContacts[0]?.name === "Mom" &&
+          storedContacts[1]?.name === "Dr. Smith";
+
+        if (isStalePlaceholderSet) {
+          setEmergencyContacts(emergencyContacts);
+          await AsyncStorage.setItem("emergencyContacts", JSON.stringify(emergencyContacts));
+        } else {
+          setEmergencyContacts(storedContacts);
+        }
+      }
       if (profileData) setUserProfile(JSON.parse(profileData));
       if (historyData) setAlertHistory(JSON.parse(historyData));
     } catch (error) {
