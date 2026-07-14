@@ -4,6 +4,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import * as Haptics from "expo-haptics";
 import { useHealth } from "@/lib/health-context";
+import { DEFAULT_THRESHOLDS } from "@/lib/risk-calculator";
 import { withOpacity } from "@/lib/utils";
 
 /**
@@ -33,14 +34,6 @@ export default function SettingsScreen() {
     pushEnabled: true,
     soundEnabled: true,
     vibrationEnabled: true,
-  });
-
-  const [thresholds, setThresholds] = useState({
-    heartRateHigh: 120,
-    heartRateLow: 50,
-    gsrHigh: 30,
-    temperatureHigh: 38,
-    temperatureLow: 35,
   });
 
   const handleSaveProfile = () => {
@@ -291,25 +284,71 @@ export default function SettingsScreen() {
 
             <View className="bg-surface rounded-2xl p-4 border border-border gap-3">
               <View>
-                <Text className="text-xs text-muted mb-1">Heart Rate High</Text>
-                <Text className="text-lg font-semibold text-foreground">{thresholds.heartRateHigh} BPM</Text>
+                <Text className="text-xs text-muted mb-1">Tachycardia (Heart Rate High)</Text>
+                <Text className="text-lg font-semibold text-foreground">
+                  {DEFAULT_THRESHOLDS.heartRateTachycardia} BPM
+                </Text>
               </View>
               <View>
-                <Text className="text-xs text-muted mb-1">Heart Rate Low</Text>
-                <Text className="text-lg font-semibold text-foreground">{thresholds.heartRateLow} BPM</Text>
+                <Text className="text-xs text-muted mb-1">Shock-Level Tachycardia</Text>
+                <Text className="text-lg font-semibold text-foreground">
+                  {DEFAULT_THRESHOLDS.heartRateSevere} BPM
+                </Text>
               </View>
               <View>
-                <Text className="text-xs text-muted mb-1">GSR High</Text>
-                <Text className="text-lg font-semibold text-foreground">{thresholds.gsrHigh} µS</Text>
+                <Text className="text-xs text-muted mb-1">Bradycardia (Heart Rate Low)</Text>
+                <Text className="text-lg font-semibold text-foreground">
+                  {DEFAULT_THRESHOLDS.heartRateBradycardia} BPM
+                </Text>
               </View>
               <View>
-                <Text className="text-xs text-muted mb-1">Temperature High</Text>
-                <Text className="text-lg font-semibold text-foreground">{thresholds.temperatureHigh}°C</Text>
+                <Text className="text-xs text-muted mb-1">Severe Bradycardia</Text>
+                <Text className="text-lg font-semibold text-foreground">
+                  {DEFAULT_THRESHOLDS.heartRateSevereBradycardia} BPM
+                </Text>
               </View>
               <View>
-                <Text className="text-xs text-muted mb-1">Temperature Low</Text>
-                <Text className="text-lg font-semibold text-foreground">{thresholds.temperatureLow}°C</Text>
+                <Text className="text-xs text-muted mb-1">Skin Conductance Elevated</Text>
+                <Text className="text-lg font-semibold text-foreground">
+                  {DEFAULT_THRESHOLDS.conductanceElevated}
+                </Text>
               </View>
+              <View>
+                <Text className="text-xs text-muted mb-1">Skin Conductance High</Text>
+                <Text className="text-lg font-semibold text-foreground">
+                  {DEFAULT_THRESHOLDS.conductanceHigh}
+                </Text>
+              </View>
+              <View>
+                <Text className="text-xs text-muted mb-1">Fever</Text>
+                <Text className="text-lg font-semibold text-foreground">
+                  {DEFAULT_THRESHOLDS.temperatureFever}°C
+                </Text>
+              </View>
+              <View>
+                <Text className="text-xs text-muted mb-1">High Fever</Text>
+                <Text className="text-lg font-semibold text-foreground">
+                  {DEFAULT_THRESHOLDS.temperatureHighFever}°C
+                </Text>
+              </View>
+              <View>
+                <Text className="text-xs text-muted mb-1">Mild Hypothermia</Text>
+                <Text className="text-lg font-semibold text-foreground">
+                  {DEFAULT_THRESHOLDS.temperatureMildHypothermia}°C
+                </Text>
+              </View>
+              <View>
+                <Text className="text-xs text-muted mb-1">Severe Hypothermia</Text>
+                <Text className="text-lg font-semibold text-foreground">
+                  {DEFAULT_THRESHOLDS.temperatureSevereHypothermia}°C
+                </Text>
+              </View>
+              <Text className="text-xs text-muted leading-relaxed mt-1">
+                Sourced from NIAID/FAAN (Sampson 2006) and Brown (2004) anaphylaxis severity
+                grading. Heart rate is weighted most heavily (validated diagnostic marker);
+                skin conductance and temperature are weighted lighter, as neither has a
+                formal clinical threshold specific to anaphylaxis.
+              </Text>
             </View>
           </View>
 

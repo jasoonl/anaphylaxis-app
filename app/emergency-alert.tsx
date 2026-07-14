@@ -4,6 +4,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import * as Haptics from "expo-haptics";
 import { useHealth } from "@/lib/health-context";
+import { DEFAULT_THRESHOLDS } from "@/lib/risk-calculator";
 import { sendEmergencyText, buildEmergencyMessage } from "@/lib/sms-service";
 import { router } from "expo-router";
 
@@ -127,7 +128,7 @@ export default function EmergencyAlertScreen() {
                 : "Manually Triggered Alert"}
             </Text>
             <Text className="text-xs text-white text-center mt-1">
-              Risk Score: {health.riskState.score}/100
+              Risk Score: {Math.round(health.riskState.score)}/10
             </Text>
           </View>
 
@@ -141,19 +142,29 @@ export default function EmergencyAlertScreen() {
           >
             <Text className="text-xs font-semibold text-white mb-1">⚠️ Abnormal Readings:</Text>
             <View className="gap-1">
-              {health.vitalSigns.heartRate > 120 && (
+              {health.vitalSigns.heartRate > DEFAULT_THRESHOLDS.heartRateTachycardia && (
                 <Text className="text-xs text-white">
-                  • Heart Rate: {Math.round(health.vitalSigns.heartRate)} BPM (elevated)
+                  • Heart Rate: {Math.round(health.vitalSigns.heartRate)} BPM (tachycardia)
                 </Text>
               )}
-              {health.vitalSigns.skinHumidity > 70 && (
+              {health.vitalSigns.heartRate < DEFAULT_THRESHOLDS.heartRateBradycardia && (
                 <Text className="text-xs text-white">
-                  • Skin Humidity: {Math.round(health.vitalSigns.skinHumidity)}% (high)
+                  • Heart Rate: {Math.round(health.vitalSigns.heartRate)} BPM (bradycardia)
                 </Text>
               )}
-              {(health.vitalSigns.temperature > 38 || health.vitalSigns.temperature < 36) && (
+              {health.vitalSigns.skinHumidity > DEFAULT_THRESHOLDS.conductanceElevated && (
                 <Text className="text-xs text-white">
-                  • Temperature: {Math.round(health.vitalSigns.temperature * 10) / 10}°C (abnormal)
+                  • Skin Conductance: {Math.round(health.vitalSigns.skinHumidity)} (elevated - possible diaphoresis)
+                </Text>
+              )}
+              {health.vitalSigns.temperature > DEFAULT_THRESHOLDS.temperatureFever && (
+                <Text className="text-xs text-white">
+                  • Temperature: {Math.round(health.vitalSigns.temperature * 10) / 10}°C (fever)
+                </Text>
+              )}
+              {health.vitalSigns.temperature < DEFAULT_THRESHOLDS.temperatureMildHypothermia && (
+                <Text className="text-xs text-white">
+                  • Temperature: {Math.round(health.vitalSigns.temperature * 10) / 10}°C (hypothermia)
                 </Text>
               )}
             </View>

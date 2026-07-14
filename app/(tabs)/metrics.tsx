@@ -46,12 +46,12 @@ export default function MetricsScreen() {
     },
     skinHumidity: {
       current: health.vitalSigns.skinHumidity,
-      min: 30,
-      max: 70,
-      average: 45,
-      baseline: 45,
+      min: 8,
+      max: 22,
+      average: 15,
+      baseline: 15,
       unit: "%",
-      normalRange: { min: 20, max: 70 },
+      normalRange: { min: 5, max: 20 },
     },
     temperature: {
       current: health.vitalSigns.temperature,
@@ -60,7 +60,7 @@ export default function MetricsScreen() {
       average: 36.9,
       baseline: 36.8,
       unit: "°C",
-      normalRange: { min: 36.5, max: 37.5 },
+      normalRange: { min: 36.1, max: 37.5 },
     },
   };
 
