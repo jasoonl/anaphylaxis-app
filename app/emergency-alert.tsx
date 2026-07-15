@@ -5,7 +5,7 @@ import { useColors } from "@/hooks/use-colors";
 import * as Haptics from "expo-haptics";
 import { useHealth } from "@/lib/health-context";
 import { DEFAULT_THRESHOLDS } from "@/lib/risk-calculator";
-import { sendEmergencyText, buildEmergencyMessage } from "@/lib/sms-service";
+import { notifyEmergencyContacts, callContact, buildEmergencyMessage } from "@/lib/sms-service";
 import { router } from "expo-router";
 
 /**
@@ -24,6 +24,10 @@ export default function EmergencyAlertScreen() {
   const health = useHealth();
   const [countdownSeconds, setCountdownSeconds] = useState(30);
   const [notifiedContacts, setNotifiedContacts] = useState<string[]>([]);
+  const [calledContactName, setCalledContactName] = useState<string | null>(null);
+  const [remainingCallContacts, setRemainingCallContacts] = useState<
+    { id: string; name: string; phone: string }[]
+  >([]);
   const dismissTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Auto-dismiss after 30 seconds if not dismissed manually
@@ -81,19 +85,41 @@ export default function EmergencyAlertScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
     const message = buildEmergencyMessage(health.riskState.score, health.userProfile.name);
-    const result = await sendEmergencyText(health.emergencyContacts, message);
+    const result = await notifyEmergencyContacts(health.emergencyContacts, message);
 
-    if (result.sent) {
-      setNotifiedContacts(result.notifiedNames);
+    if (result.smsResult.sent) {
+      setNotifiedContacts(result.smsResult.notifiedNames);
       health.addAlertToHistory("critical", health.riskState.score);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     }
 
-    Alert.alert(result.sent ? "Contacts Notified" : "Not Sent", result.message, [
-      { text: "OK", onPress: () => {} },
-    ]);
+    if (result.calledContact) {
+      setCalledContactName(result.calledContact.name);
+    }
+    setRemainingCallContacts(result.remainingContacts.map((c) => ({ id: c.id, name: c.name, phone: c.phone })));
+
+    const callLine =
+      result.remainingContacts.length > 0
+        ? "\n\nTap a Call button below to phone each contact."
+        : "";
+    Alert.alert(
+      result.smsResult.sent ? "Contacts Notified" : "Not Sent",
+      result.smsResult.message + callLine,
+      [{ text: "OK", onPress: () => {} }]
+    );
+  };
+
+  const handleCallRemaining = async (phone: string, name: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const opened = await callContact(phone);
+    if (opened) {
+      setCalledContactName(name);
+      setRemainingCallContacts((prev) => prev.filter((c) => c.phone !== phone));
+    } else {
+      Alert.alert("Could Not Call", `Unable to open the dialer for ${name}.`);
+    }
   };
 
   const handleAdministerEpinephrine = () => {
@@ -204,14 +230,32 @@ export default function EmergencyAlertScreen() {
               style={{ backgroundColor: "rgba(255, 255, 255, 0.2)" }}
               activeOpacity={0.8}
             >
-              <Text className="text-xl mb-0.5">📧</Text>
-              <Text className="text-sm font-bold text-white">Notify Contacts</Text>
+              <Text className="text-xl mb-0.5">📧📞</Text>
+              <Text className="text-sm font-bold text-white">Text &amp; Call Contacts</Text>
               <Text className="text-xs mt-0.5" style={{ color: "rgba(255, 255, 255, 0.8)" }}>
                 {notifiedContacts.length > 0
-                  ? `Notified: ${notifiedContacts.join(", ")}`
+                  ? `Texted: ${notifiedContacts.join(", ")}`
                   : `${health.emergencyContacts.filter((c) => c.notifyEnabled).length} contacts enabled`}
               </Text>
             </TouchableOpacity>
+
+            {calledContactName && (
+              <Text className="text-xs text-center" style={{ color: "rgba(255, 255, 255, 0.9)" }}>
+                📞 Called {calledContactName}
+              </Text>
+            )}
+
+            {remainingCallContacts.map((c) => (
+              <TouchableOpacity
+                key={c.id}
+                onPress={() => handleCallRemaining(c.phone, c.name)}
+                className="rounded-lg py-2 px-3 items-center border border-white active:opacity-70"
+                style={{ backgroundColor: "rgba(255, 255, 255, 0.15)" }}
+                activeOpacity={0.8}
+              >
+                <Text className="text-xs font-semibold text-white">📞 Call {c.name}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
           {/* Countdown Timer */}

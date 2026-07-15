@@ -1,14 +1,35 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 /**
  * BLE Device Manager
  *
- * Handles Bluetooth Low Energy connectivity with wearable device
- * Provides fallback to demo mode with simulated sensor data
+ * Handles Bluetooth Low Energy connectivity with wearable device.
+ *
+ * IMPORTANT: Real BLE radio scanning/pairing requires a native module
+ * (e.g. react-native-ble-plx) compiled into a custom dev client - it cannot
+ * run inside Expo Go, which only bundles Expo's own precompiled module set.
+ * Since this app is built to run in Expo Go without an Apple Developer
+ * account or custom build, this manager provides a fully real device
+ * PAIRING/MANAGEMENT layer (persisted paired-device list, add/remove/
+ * reconnect, only one device active at a time - all genuinely functional
+ * app state) on top of simulated sensor data, since there's no actual
+ * hardware to read from in this environment.
  */
+
+const PAIRED_DEVICES_KEY = "pairedDevices";
+const ACTIVE_DEVICE_KEY = "activeDeviceId";
 
 export interface BLEDevice {
   id: string;
   name: string;
   isConnected: boolean;
+}
+
+export interface PairedDevice {
+  id: string;
+  name: string;
+  pairedAt: number;
+  lastConnectedAt: number | null;
 }
 
 export interface SensorData {
@@ -25,6 +46,10 @@ class BLEManager {
   private currentDevice: BLEDevice | null = null;
   private listeners: Array<(data: SensorData) => void> = [];
   private simulationInterval: ReturnType<typeof setInterval> | null = null;
+
+  private pairedDevices: PairedDevice[] = [];
+  private activeDeviceId: string | null = null;
+  private loaded = false;
 
   // Smooth random-walk state so values drift realistically instead of jumping every tick
   private simHeartRate = 72;
@@ -43,37 +68,141 @@ class BLEManager {
 
 
   /**
-   * Initialize BLE and scan for devices
-   * Falls back to demo mode if BLE is unavailable
+   * Load persisted paired devices and active device from storage.
+   * Safe to call repeatedly - only loads once.
    */
-  async scanForDevices(): Promise<BLEDevice[]> {
+  private async ensureLoaded(): Promise<void> {
+    if (this.loaded) return;
     try {
-      // TODO: Implement actual BLE scanning using expo-ble or react-native-ble-plx
-      // For now, return mock devices
-      return [
-        { id: "device_1", name: "XIAO ESP32 C3", isConnected: false },
-        { id: "device_2", name: "Wearable Band", isConnected: false },
-      ];
+      const [devicesJson, activeId] = await Promise.all([
+        AsyncStorage.getItem(PAIRED_DEVICES_KEY),
+        AsyncStorage.getItem(ACTIVE_DEVICE_KEY),
+      ]);
+      this.pairedDevices = devicesJson ? JSON.parse(devicesJson) : [];
+      this.activeDeviceId = activeId || null;
     } catch (error) {
-      console.error("BLE scan failed:", error);
-      return [];
+      console.error("Failed to load paired devices:", error);
+      this.pairedDevices = [];
+      this.activeDeviceId = null;
+    }
+    this.loaded = true;
+  }
+
+  private async persist(): Promise<void> {
+    try {
+      await AsyncStorage.setItem(PAIRED_DEVICES_KEY, JSON.stringify(this.pairedDevices));
+      if (this.activeDeviceId) {
+        await AsyncStorage.setItem(ACTIVE_DEVICE_KEY, this.activeDeviceId);
+      } else {
+        await AsyncStorage.removeItem(ACTIVE_DEVICE_KEY);
+      }
+    } catch (error) {
+      console.error("Failed to persist device state:", error);
     }
   }
 
   /**
-   * Connect to a specific BLE device
+   * Simulate discovering nearby devices available to pair. Returns devices
+   * not already in the paired list. (Real BLE scanning isn't possible in
+   * Expo Go - see class-level note.)
+   */
+  async scanForDevices(): Promise<BLEDevice[]> {
+    await this.ensureLoaded();
+    const candidates: BLEDevice[] = [
+      { id: "xiao-esp32-c3", name: "XIAO ESP32 C3", isConnected: false },
+      { id: "wearable-band-01", name: "Wearable Band", isConnected: false },
+      { id: "guard-sensor-02", name: "Anaphylaxis Guard Sensor", isConnected: false },
+    ];
+    const pairedIds = new Set(this.pairedDevices.map((d) => d.id));
+    return candidates.filter((c) => !pairedIds.has(c.id));
+  }
+
+  /** Returns all paired (known) devices, most recently connected first. */
+  async getPairedDevices(): Promise<PairedDevice[]> {
+    await this.ensureLoaded();
+    return [...this.pairedDevices].sort(
+      (a, b) => (b.lastConnectedAt ?? b.pairedAt) - (a.lastConnectedAt ?? a.pairedAt)
+    );
+  }
+
+  /** ID of the currently active (streaming) device, if any. */
+  async getActiveDeviceId(): Promise<string | null> {
+    await this.ensureLoaded();
+    return this.activeDeviceId;
+  }
+
+  /**
+   * Pair a newly discovered device: adds it to the paired list and connects
+   * to it as the active device (disconnecting any previously active one -
+   * only one device streams at a time, matching how a real wearable works).
+   */
+  async pairDevice(device: BLEDevice): Promise<PairedDevice> {
+    await this.ensureLoaded();
+    const now = Date.now();
+    const paired: PairedDevice = {
+      id: device.id,
+      name: device.name,
+      pairedAt: now,
+      lastConnectedAt: now,
+    };
+    this.pairedDevices = [...this.pairedDevices.filter((d) => d.id !== device.id), paired];
+    await this.setActiveDevice(device.id, device.name);
+    await this.persist();
+    return paired;
+  }
+
+  /**
+   * Reconnect to a previously paired device that isn't currently active.
+   */
+  async reconnectDevice(id: string): Promise<boolean> {
+    await this.ensureLoaded();
+    const device = this.pairedDevices.find((d) => d.id === id);
+    if (!device) return false;
+    await this.setActiveDevice(device.id, device.name);
+    device.lastConnectedAt = Date.now();
+    await this.persist();
+    return true;
+  }
+
+  /**
+   * Remove (unpair) a device. If it was the active device, disconnects and
+   * stops the data stream first.
+   */
+  async removeDevice(id: string): Promise<void> {
+    await this.ensureLoaded();
+    if (this.activeDeviceId === id) {
+      await this.disconnect();
+    }
+    this.pairedDevices = this.pairedDevices.filter((d) => d.id !== id);
+    await this.persist();
+  }
+
+  /** Disconnects the active device without unpairing it - it stays in the paired list. */
+  async disconnectActive(): Promise<void> {
+    await this.disconnect();
+    await this.persist();
+  }
+
+  private async setActiveDevice(id: string, name: string): Promise<void> {
+    this.isConnected = true;
+    this.currentDevice = { id, name, isConnected: true };
+    this.activeDeviceId = id;
+    this.startDataStream();
+  }
+
+  /**
+   * Connect to a specific BLE device by ID. Kept for backward compatibility
+   * with existing demo-mode wiring; prefer pairDevice/reconnectDevice for
+   * the device management screen.
    */
   async connectToDevice(deviceId: string): Promise<boolean> {
     try {
-      // TODO: Implement actual BLE connection
       this.isConnected = true;
       this.currentDevice = {
         id: deviceId,
-        name: "XIAO ESP32 C3",
+        name: "Demo Sensor",
         isConnected: true,
       };
-
-      // Start receiving data
       this.startDataStream();
       return true;
     } catch (error) {
@@ -88,6 +217,7 @@ class BLEManager {
   async disconnect(): Promise<void> {
     this.isConnected = false;
     this.currentDevice = null;
+    this.activeDeviceId = null;
     this.stopDataStream();
   }
 
@@ -195,14 +325,6 @@ class BLEManager {
       isConnected: this.isConnected,
       device: this.currentDevice,
     };
-  }
-
-  /**
-   * Forget/unpair device
-   */
-  async forgetDevice(): Promise<void> {
-    await this.disconnect();
-    this.currentDevice = null;
   }
 }
 
