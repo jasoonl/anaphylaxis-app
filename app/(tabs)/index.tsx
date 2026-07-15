@@ -37,7 +37,7 @@ export default function DashboardScreen() {
   const health = useHealth();
   const [prevScore, setPrevScore] = useState(0);
   const [prevRiskLevel, setPrevRiskLevel] = useState<"safe" | "warning" | "critical">("safe");
-  const [hasAutoAlerted, setHasAutoAlerted] = useState(false);
+  const [connectedDeviceName, setConnectedDeviceName] = useState<string | null>(null);
 
   // Initialize notifications
   useEffect(() => {
@@ -54,16 +54,42 @@ export default function DashboardScreen() {
       });
     });
 
-    // Start BLE data stream in demo mode
-    if (health.isDemoMode) {
-      bleManager.connectToDevice("demo");
-    }
+    // Only fall back to a demo connection if the person hasn't paired a real
+    // device via the Devices screen - otherwise this would silently override
+    // their selection every time the dashboard mounts.
+    (async () => {
+      const activeId = await bleManager.getActiveDeviceId();
+      if (!activeId && health.isDemoMode) {
+        bleManager.connectToDevice("demo");
+      }
+    })();
 
     return () => {
       unsubscribe();
-      bleManager.disconnect();
     };
   }, [health.isDemoMode]);
+
+  // Keep the header's connection label in sync with the actual active device
+  useEffect(() => {
+    let cancelled = false;
+    const sync = async () => {
+      const activeId = await bleManager.getActiveDeviceId();
+      if (cancelled) return;
+      if (activeId) {
+        const paired = await bleManager.getPairedDevices();
+        const active = paired.find((d) => d.id === activeId);
+        if (!cancelled) setConnectedDeviceName(active?.name ?? null);
+      } else {
+        setConnectedDeviceName(null);
+      }
+    };
+    sync();
+    const interval = setInterval(sync, 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   // Calculate risk based on vital signs
   useEffect(() => {
@@ -124,7 +150,11 @@ export default function DashboardScreen() {
           <View className="gap-1">
             <Text className="text-3xl font-bold text-foreground">Anaphylaxis Guard</Text>
             <Text className="text-sm text-muted">
-              {health.isDeviceConnected ? "Connected" : health.isDemoMode ? "Demo Mode" : "Disconnected"}
+              {connectedDeviceName
+                ? `Connected: ${connectedDeviceName}`
+                : health.isDemoMode
+                  ? "Demo Mode"
+                  : "Disconnected"}
             </Text>
           </View>
 

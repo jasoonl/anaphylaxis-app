@@ -5,51 +5,65 @@
  * three tracked vitals: heart rate, transepidermal water loss (TEWL), and
  * temperature.
  *
- * Thresholds and relative weighting are grounded in real anaphylaxis
- * literature, with the evidence strength for each signal honestly reflected
- * in how heavily it's weighted:
+ * === TEWL: the actual validated rule ===
+ * Schuler CF et al., "Transepidermal water loss rises before food
+ * anaphylaxis and predicts food challenge outcomes" (J Clin Invest,
+ * 2023;133(16):e168965).
  *
- * - Heart rate (tachycardia/bradycardia) is grounded in the NIAID/FAAN
- *   (Sampson 2006) and Brown (2004) severity grading systems, both of which
- *   center on it as a formal anaphylaxis severity criterion. Standard adult
- *   tachycardia threshold: >100 bpm; shock-level: >130 bpm. Severe
- *   bradycardia (<50 bpm) is a recognized sign of impending anaphylactic
- *   shock/arrest. Weighted heaviest as the most established formal
- *   criterion: max 4.5 of 10 points.
+ * The validated finding is a single combined rule, not a magnitude-scaled
+ * dial:
  *
- * - Transepidermal water loss (TEWL) is grounded directly in Schuler et al.,
- *   "Transepidermal water loss rises before food anaphylaxis and predicts
- *   food challenge outcomes" (J Clin Invest, 2023;133(16):e168965). In that
- *   study, TEWL rose by a mean of 2.93 g/m2/h during anaphylactic reactions
- *   (3.44 g/m2/h in reactions severe enough to require epinephrine), versus
- *   a mean decline of -1.00 g/m2/h in non-reactions. A rise of >=1 g/m2/h
- *   from baseline had 100% sensitivity for anaphylaxis; combined with any
- *   objective symptom/sign it reached 96% specificity. Critically, the study
- *   is explicit that a TEWL rise ALONE is sensitive but NOT specific for
- *   anaphylaxis - it only becomes highly specific in combination with
- *   another signal. This app has no separate symptom-entry input, so a
- *   simultaneous heart rate elevation is used as that corroborating signal
- *   instead, in the same spirit as the study's design. Because this is the
- *   most directly on-topic, quantitatively validated citation of the three
- *   signals (specifically about predicting anaphylaxis, not general shock),
- *   it's weighted close to heart rate: max 3.5 of 10 points, but capped
- *   below heart rate to reflect the "not specific alone" caveat and that
- *   TEWL is not yet part of any formal diagnostic criteria (NIAID/FAAN, WAO,
- *   or Brown).
+ *   TEWL rise >= 1 g/m2/h from a person's own baseline, PLUS at least one
+ *   objective symptom/sign, together gave 100% sensitivity and 96%
+ *   specificity, with a ~38 minute median warning window. BOTH halves are
+ *   required - the study is explicit that neither channel alone met that
+ *   bar.
  *
- * - Temperature is not part of any standard anaphylaxis diagnostic or
- *   severity criteria (NIAID/FAAN, WAO, or Brown) at all. It's included here
- *   only as a general shock/perfusion marker from broader critical care
- *   practice, not because it's anaphylaxis-specific. Weighted lightest:
- *   max 2 of 10 points.
+ * The study also reports descriptive group means (reactors +2.93 g/m2/h,
+ * non-reactors -1.00 g/m2/h [a decline], epinephrine-requiring reactions
+ * +3.44 g/m2/h) and notes that Grade 2 vs Grade 1 reactions rose more but
+ * the difference was NOT statistically significant. Per the study's own
+ * framing, that means these are reference/descriptive figures, not a basis
+ * for a severity ladder - so this app does not scale the TEWL score by how
+ * far above 1 g/m2/h the rise is. It's a threshold that's either crossed or
+ * not, and it only matters combined with a corroborating sign.
  *
- * Sources: Sampson HA et al., "Second symposium on the definition and
- * management of anaphylaxis" (NIAID/FAAN, 2006); Brown AF, "Clinical
- * features and severity grading of anaphylaxis" (JACI, 2004); Schuler CF
- * et al., "Transepidermal water loss rises before food anaphylaxis and
- * predicts food challenge outcomes" (J Clin Invest, 2023); World Allergy
- * Organization Anaphylaxis Guidance (2020); Anaphylaxis 2023 practice
- * parameter update (Annals of Allergy, Asthma & Immunology).
+ * This app has no separate symptom-entry input, so heart rate abnormality
+ * (any deviation outside 60-100 bpm) is used as that corroborating "objective
+ * sign" - in the same spirit as the study's design, though not identical to
+ * it (the study's symptoms were things like hives, throat tightness, etc.,
+ * observed by a clinician).
+ *
+ * === Heart rate ===
+ * Grounded in the NIAID/FAAN (Sampson 2006) and Brown (2004) severity
+ * grading systems, both of which use it as a formal anaphylaxis severity
+ * criterion, independent of TEWL. Standard adult tachycardia threshold:
+ * >100 bpm; shock-level: >130 bpm. Severe bradycardia (<50 bpm) is a
+ * recognized sign of impending anaphylactic shock/arrest.
+ *
+ * === Temperature ===
+ * Not part of any standard anaphylaxis diagnostic or severity criteria
+ * (NIAID/FAAN, WAO, or Brown) at all, and not a valid stand-in for the
+ * TEWL study's "objective symptom" requirement. Included only as a general
+ * shock/perfusion marker, weighted lightest of the three.
+ *
+ * === Scoring budget (out of 10) ===
+ * - Heart rate (independent, formal criteria): max 4
+ * - TEWL rise >= 1 g/m2/h alone, no corroboration: flat 1 (sensitive, not
+ *   specific alone - matches the study's own caveat)
+ * - TEWL rise >= 1 g/m2/h WITH heart rate corroboration (the actual
+ *   validated 100%/96% combination): flat 4, replacing the "alone" score
+ * - Temperature (weakest evidence, general marker only): max 2
+ *
+ * At minimum validated combination (exactly 1 g/m2/h rise + any heart rate
+ * abnormality), this lands in the "Cautious" zone rather than "Danger" -
+ * an intentional choice reflecting that the study's own framing is an EARLY
+ * WARNING system (median 38 min before things get worse), not a
+ * call-911-now signal by itself.
+ *
+ * Sources: Sampson HA et al. (NIAID/FAAN, 2006); Brown AF, JACI (2004);
+ * Schuler CF et al., J Clin Invest (2023); World Allergy Organization
+ * Anaphylaxis Guidance (2020).
  */
 
 export interface RiskThresholds {
@@ -58,9 +72,12 @@ export interface RiskThresholds {
   heartRateBradycardia: number; // bpm - low HR, concerning in severe anaphylaxis
   heartRateSevereBradycardia: number; // bpm - severe bradycardia, pre-arrest sign
   tewlBaseline: number; // g/m2/h - resting forearm TEWL (Schuler et al. cohort mean ~10)
-  tewlRiseThreshold: number; // g/m2/h rise from baseline - 100% sensitive cutoff (Schuler et al.)
-  tewlReactionMean: number; // g/m2/h rise - mean rise during anaphylactic reactions (Schuler et al.)
-  tewlSevereReactionMean: number; // g/m2/h rise - mean rise during epinephrine-requiring reactions (Schuler et al.)
+  tewlRiseThreshold: number; // g/m2/h rise from baseline - the ONLY validated TEWL threshold (Schuler et al.)
+  // Reference-only descriptive stats from Schuler et al. - NOT used in scoring.
+  // The study found no statistically significant severity gradient beyond the
+  // single threshold above, so these are not additional cutoffs.
+  tewlReactionMeanReference: number; // g/m2/h - mean rise in reactors (descriptive)
+  tewlSevereReactionMeanReference: number; // g/m2/h - mean rise in epinephrine-requiring reactions (descriptive)
   temperatureFever: number; // °C - mild fever
   temperatureHighFever: number; // °C - high fever
   temperatureMildHypothermia: number; // °C - mild hypothermia
@@ -68,8 +85,8 @@ export interface RiskThresholds {
 }
 
 export interface RiskFactors {
-  heartRateRisk: number; // contribution out of 4.5
-  gsrRisk: number; // TEWL contribution out of 3.5 (field name kept for compatibility)
+  heartRateRisk: number; // contribution out of 4
+  gsrRisk: number; // TEWL contribution out of 4 (field name kept for compatibility)
   temperatureRisk: number; // contribution out of 2
   combinedScore: number; // 0-10, 0 = safe, 10 = danger
   riskLevel: "safe" | "warning" | "critical";
@@ -82,8 +99,8 @@ export const DEFAULT_THRESHOLDS: RiskThresholds = {
   heartRateSevereBradycardia: 50,
   tewlBaseline: 10,
   tewlRiseThreshold: 1,
-  tewlReactionMean: 2.93,
-  tewlSevereReactionMean: 3.44,
+  tewlReactionMeanReference: 2.93,
+  tewlSevereReactionMeanReference: 3.44,
   temperatureFever: 37.5,
   temperatureHighFever: 38.0,
   temperatureMildHypothermia: 36.1,
@@ -98,43 +115,43 @@ function scaleBetween(value: number, from: number, to: number, max: number): num
 }
 
 /**
- * Heart rate risk contribution, max 4.5 points.
- * Tachycardia >100 bpm ramps 0->3 by 130 bpm (shock-level), then 3->4.5 by 150 bpm.
- * Bradycardia <60 bpm ramps 0->3 by 50 bpm (severe), then 3->4.5 by 40 bpm.
+ * Heart rate risk contribution, max 4 points. Independent of TEWL.
+ * Tachycardia >100 bpm ramps 0->2.5 by 130 bpm (shock-level), then 2.5->4 by 150 bpm.
+ * Bradycardia <60 bpm ramps 0->2.5 by 50 bpm (severe), then 2.5->4 by 40 bpm.
  */
 function calculateHeartRateRisk(heartRate: number, t: RiskThresholds): number {
   if (heartRate > t.heartRateTachycardia) {
     if (heartRate <= t.heartRateSevere) {
-      return scaleBetween(heartRate, t.heartRateTachycardia, t.heartRateSevere, 3);
+      return scaleBetween(heartRate, t.heartRateTachycardia, t.heartRateSevere, 2.5);
     }
-    return 3 + scaleBetween(heartRate, t.heartRateSevere, t.heartRateSevere + 20, 1.5);
+    return 2.5 + scaleBetween(heartRate, t.heartRateSevere, t.heartRateSevere + 20, 1.5);
   }
   if (heartRate < t.heartRateBradycardia) {
     if (heartRate >= t.heartRateSevereBradycardia) {
-      return scaleBetween(t.heartRateBradycardia - heartRate, 0, t.heartRateBradycardia - t.heartRateSevereBradycardia, 3);
+      return scaleBetween(t.heartRateBradycardia - heartRate, 0, t.heartRateBradycardia - t.heartRateSevereBradycardia, 2.5);
     }
-    return 3 + scaleBetween(t.heartRateSevereBradycardia - heartRate, 0, 10, 1.5);
+    return 2.5 + scaleBetween(t.heartRateSevereBradycardia - heartRate, 0, 10, 1.5);
   }
   return 0;
 }
 
 /**
- * TEWL risk contribution, max 3.5 points, based on rise from baseline
- * (Schuler et al. 2023 - the study's predictive power is specifically about
- * the RISE from an individual's own baseline, not an absolute value).
+ * TEWL risk contribution, max 4 points - implements the actual validated
+ * AND-gate rule (rise >=1 g/m2/h AND a corroborating sign), not a magnitude
+ * ramp. Heart rate abnormality stands in for the study's "objective
+ * symptom/sign" requirement, since there's no separate symptom input.
  *
- * A decline in TEWL (as seen in non-reactors in the study) contributes 0 -
- * it is not concerning. Rise >=1 g/m2/h ramps 0->2.5 by the reaction mean
- * (2.93); beyond that ramps 2.5->3.5 by 4.5 (comfortably past the severe
- * reaction mean of 3.44, since some severe reactions exceed the sample mean).
+ * - Rise < 1 g/m2/h: 0 (below the only validated threshold)
+ * - Rise >= 1 g/m2/h, no corroborating heart rate abnormality: flat 1
+ *   (sensitive but not specific alone, per the study's explicit caveat)
+ * - Rise >= 1 g/m2/h WITH corroborating heart rate abnormality: flat 4
+ *   (the actual 100% sensitive / 96% specific validated combination)
  */
-function calculateGSRRisk(currentTewl: number, t: RiskThresholds): number {
+function calculateGSRRisk(currentTewl: number, heartRateRisk: number, t: RiskThresholds): number {
   const rise = currentTewl - t.tewlBaseline;
-  if (rise <= t.tewlRiseThreshold) return 0;
-  if (rise <= t.tewlReactionMean) {
-    return scaleBetween(rise, t.tewlRiseThreshold, t.tewlReactionMean, 2.5);
-  }
-  return 2.5 + scaleBetween(rise, t.tewlReactionMean, 4.5, 1);
+  if (rise < t.tewlRiseThreshold) return 0;
+  const hasCorroboratingSign = heartRateRisk > 0;
+  return hasCorroboratingSign ? 4 : 1;
 }
 
 /**
@@ -191,7 +208,7 @@ export function calculateRisk(
   thresholds: RiskThresholds = DEFAULT_THRESHOLDS
 ): RiskFactors {
   const heartRateRisk = calculateHeartRateRisk(heartRate, thresholds);
-  const gsrRisk = calculateGSRRisk(gsr, thresholds);
+  const gsrRisk = calculateGSRRisk(gsr, heartRateRisk, thresholds);
   const temperatureRisk = calculateTemperatureRisk(temperature, thresholds);
 
   const combinedScore = calculateCombinedRisk({
@@ -218,8 +235,10 @@ export function getRiskExplanation(factors: RiskFactors): string {
   if (factors.heartRateRisk > 1.5) {
     parts.push("elevated or low heart rate");
   }
-  if (factors.gsrRisk > 1.2) {
-    parts.push("rising transepidermal water loss");
+  if (factors.gsrRisk >= 4) {
+    parts.push("rising skin water loss with a corroborating vital sign (validated early-warning pattern)");
+  } else if (factors.gsrRisk > 0) {
+    parts.push("rising skin water loss (not yet corroborated)");
   }
   if (factors.temperatureRisk > 0.5) {
     parts.push("abnormal temperature");

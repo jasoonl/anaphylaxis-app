@@ -1,5 +1,6 @@
 import { ScrollView, Text, View, TouchableOpacity, Pressable, Alert, TextInput } from "react-native";
 import { useState } from "react";
+import { router } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import * as Haptics from "expo-haptics";
@@ -94,6 +95,21 @@ export default function SettingsScreen() {
           <View className="gap-1">
             <Text className="text-3xl font-bold text-foreground">Settings</Text>
             <Text className="text-sm text-muted">Manage your preferences</Text>
+          </View>
+
+          {/* Device Section */}
+          <View className="gap-3">
+            <Text className="text-lg font-semibold text-foreground">Device</Text>
+            <TouchableOpacity
+              onPress={() => router.push("/device-management")}
+              className="bg-surface rounded-2xl p-4 border border-border flex-row items-center justify-between"
+            >
+              <View className="flex-row items-center gap-3">
+                <Text className="text-xl">⌚</Text>
+                <Text className="text-base font-semibold text-foreground">Manage Devices</Text>
+              </View>
+              <Text className="text-lg text-muted">›</Text>
+            </TouchableOpacity>
           </View>
 
           {/* User Profile Section */}
@@ -314,21 +330,21 @@ export default function SettingsScreen() {
                 </Text>
               </View>
               <View>
-                <Text className="text-xs text-muted mb-1">TEWL Rise Threshold</Text>
+                <Text className="text-xs text-muted mb-1">TEWL Rise Threshold (validated rule)</Text>
                 <Text className="text-lg font-semibold text-foreground">
-                  +{DEFAULT_THRESHOLDS.tewlRiseThreshold} g/m²/h
+                  +{DEFAULT_THRESHOLDS.tewlRiseThreshold} g/m²/h + corroborating sign
                 </Text>
               </View>
               <View>
-                <Text className="text-xs text-muted mb-1">TEWL Reaction Mean Rise</Text>
+                <Text className="text-xs text-muted mb-1">Reactor Mean Rise (reference only)</Text>
                 <Text className="text-lg font-semibold text-foreground">
-                  +{DEFAULT_THRESHOLDS.tewlReactionMean} g/m²/h
+                  +{DEFAULT_THRESHOLDS.tewlReactionMeanReference} g/m²/h
                 </Text>
               </View>
               <View>
-                <Text className="text-xs text-muted mb-1">TEWL Severe Reaction Mean Rise</Text>
+                <Text className="text-xs text-muted mb-1">Epi-Requiring Reaction Mean (reference only)</Text>
                 <Text className="text-lg font-semibold text-foreground">
-                  +{DEFAULT_THRESHOLDS.tewlSevereReactionMean} g/m²/h
+                  +{DEFAULT_THRESHOLDS.tewlSevereReactionMeanReference} g/m²/h
                 </Text>
               </View>
               <View>
@@ -357,12 +373,15 @@ export default function SettingsScreen() {
               </View>
               <Text className="text-xs text-muted leading-relaxed mt-1">
                 Heart rate thresholds sourced from NIAID/FAAN (Sampson 2006) and Brown (2004)
-                anaphylaxis severity grading - formal diagnostic criteria. TEWL thresholds
-                sourced from Schuler et al., J Clin Invest 2023 (rise from personal baseline
-                predicts anaphylaxis: 100% sensitive at +1 g/m²/h, but the study is explicit
-                this is not specific without a corroborating sign - not yet a formal
-                diagnostic criterion). Temperature is not part of any anaphylaxis criteria and
-                is weighted lightest.
+                anaphylaxis severity grading - formal diagnostic criteria, scored independently.
+                TEWL rule sourced from Schuler et al., J Clin Invest 2023: a rise of +1 g/m²/h
+                from personal baseline PLUS a corroborating sign together gave 100%
+                sensitivity and 96% specificity (~38 min median warning) - neither alone met
+                that bar, so this app requires both (using heart rate abnormality as the
+                corroborating sign, since there's no separate symptom input) rather than
+                scaling by how far above +1 the rise is - the study found no significant
+                severity gradient beyond that single threshold. Temperature is not part of any
+                anaphylaxis criteria and is weighted lightest.
               </Text>
             </View>
           </View>

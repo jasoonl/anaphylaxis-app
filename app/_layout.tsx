@@ -90,6 +90,7 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="emergency-alert" options={{ presentation: "fullScreenModal" }} />
+            <Stack.Screen name="device-management" />
             <Stack.Screen name="oauth/callback" />
           </Stack>
           <StatusBar style="auto" />
