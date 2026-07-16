@@ -37,6 +37,46 @@ export default function SettingsScreen() {
     vibrationEnabled: true,
   });
 
+  const [editingThresholds, setEditingThresholds] = useState(false);
+  const [tempThresholds, setTempThresholds] = useState(health.riskThresholds);
+
+  const handleEditThresholds = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setTempThresholds(health.riskThresholds);
+    setEditingThresholds(true);
+  };
+
+  const handleSaveThresholds = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    health.updateRiskThresholds(tempThresholds);
+    setEditingThresholds(false);
+  };
+
+  const handleResetThresholds = () => {
+    Alert.alert(
+      "Reset to Defaults",
+      "Restore all thresholds to the general research-based defaults? This will discard your doctor's custom values.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reset",
+          style: "destructive",
+          onPress: () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            health.resetRiskThresholds();
+            setTempThresholds(DEFAULT_THRESHOLDS);
+            setEditingThresholds(false);
+          },
+        },
+      ]
+    );
+  };
+
+  const setThreshold = (key: keyof typeof tempThresholds, text: string) => {
+    const num = parseFloat(text);
+    setTempThresholds((prev) => ({ ...prev, [key]: isNaN(num) ? 0 : num }));
+  };
+
   const handleSaveProfile = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     health.updateUserProfile(tempProfile);
@@ -296,92 +336,78 @@ export default function SettingsScreen() {
 
           {/* Risk Thresholds (Advanced) */}
           <View className="gap-3">
-            <Text className="text-lg font-semibold text-foreground">Risk Thresholds (Advanced)</Text>
+            <View className="flex-row items-center justify-between">
+              <Text className="text-lg font-semibold text-foreground">Risk Thresholds</Text>
+              {!editingThresholds ? (
+                <TouchableOpacity onPress={handleEditThresholds}>
+                  <Text className="text-sm font-semibold" style={{ color: colors.primary }}>Edit</Text>
+                </TouchableOpacity>
+              ) : (
+                <View className="flex-row gap-4">
+                  <TouchableOpacity onPress={() => setEditingThresholds(false)}>
+                    <Text className="text-sm text-muted">Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleSaveThresholds}>
+                    <Text className="text-sm font-semibold" style={{ color: colors.primary }}>Save</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            <Text className="text-xs text-muted leading-relaxed">
+              These start at general research-based defaults. If your doctor gives you personalized
+              values (for example, your own resting TEWL baseline or a heart-rate range specific to
+              you), tap Edit to enter them. Reference-only figures below are descriptive study
+              statistics and aren't used in scoring, so they can't be edited.
+            </Text>
 
             <View className="bg-surface rounded-2xl p-4 border border-border gap-3">
-              <View>
-                <Text className="text-xs text-muted mb-1">Tachycardia (Heart Rate High)</Text>
-                <Text className="text-lg font-semibold text-foreground">
-                  {DEFAULT_THRESHOLDS.heartRateTachycardia} BPM
-                </Text>
-              </View>
-              <View>
-                <Text className="text-xs text-muted mb-1">Shock-Level Tachycardia</Text>
-                <Text className="text-lg font-semibold text-foreground">
-                  {DEFAULT_THRESHOLDS.heartRateSevere} BPM
-                </Text>
-              </View>
-              <View>
-                <Text className="text-xs text-muted mb-1">Bradycardia (Heart Rate Low)</Text>
-                <Text className="text-lg font-semibold text-foreground">
-                  {DEFAULT_THRESHOLDS.heartRateBradycardia} BPM
-                </Text>
-              </View>
-              <View>
-                <Text className="text-xs text-muted mb-1">Severe Bradycardia</Text>
-                <Text className="text-lg font-semibold text-foreground">
-                  {DEFAULT_THRESHOLDS.heartRateSevereBradycardia} BPM
-                </Text>
-              </View>
-              <View>
-                <Text className="text-xs text-muted mb-1">TEWL Baseline</Text>
-                <Text className="text-lg font-semibold text-foreground">
-                  {DEFAULT_THRESHOLDS.tewlBaseline} g/m²/h
-                </Text>
-              </View>
-              <View>
-                <Text className="text-xs text-muted mb-1">TEWL Rise Threshold (validated rule)</Text>
-                <Text className="text-lg font-semibold text-foreground">
-                  +{DEFAULT_THRESHOLDS.tewlRiseThreshold} g/m²/h + corroborating sign
-                </Text>
-              </View>
-              <View>
-                <Text className="text-xs text-muted mb-1">Reactor Mean Rise (reference only)</Text>
-                <Text className="text-lg font-semibold text-foreground">
-                  +{DEFAULT_THRESHOLDS.tewlReactionMeanReference} g/m²/h
-                </Text>
-              </View>
-              <View>
-                <Text className="text-xs text-muted mb-1">Epi-Requiring Reaction Mean (reference only)</Text>
-                <Text className="text-lg font-semibold text-foreground">
-                  +{DEFAULT_THRESHOLDS.tewlSevereReactionMeanReference} g/m²/h
-                </Text>
-              </View>
-              <View>
-                <Text className="text-xs text-muted mb-1">Fever</Text>
-                <Text className="text-lg font-semibold text-foreground">
-                  {DEFAULT_THRESHOLDS.temperatureFever}°C
-                </Text>
-              </View>
-              <View>
-                <Text className="text-xs text-muted mb-1">High Fever</Text>
-                <Text className="text-lg font-semibold text-foreground">
-                  {DEFAULT_THRESHOLDS.temperatureHighFever}°C
-                </Text>
-              </View>
-              <View>
-                <Text className="text-xs text-muted mb-1">Mild Hypothermia</Text>
-                <Text className="text-lg font-semibold text-foreground">
-                  {DEFAULT_THRESHOLDS.temperatureMildHypothermia}°C
-                </Text>
-              </View>
-              <View>
-                <Text className="text-xs text-muted mb-1">Severe Hypothermia</Text>
-                <Text className="text-lg font-semibold text-foreground">
-                  {DEFAULT_THRESHOLDS.temperatureSevereHypothermia}°C
-                </Text>
-              </View>
+              {editingThresholds ? (
+                <>
+                  <ThresholdEditRow label="Tachycardia (Heart Rate High)" unit="BPM" value={tempThresholds.heartRateTachycardia} onChange={(t) => setThreshold("heartRateTachycardia", t)} colors={colors} />
+                  <ThresholdEditRow label="Shock-Level Tachycardia" unit="BPM" value={tempThresholds.heartRateSevere} onChange={(t) => setThreshold("heartRateSevere", t)} colors={colors} />
+                  <ThresholdEditRow label="Bradycardia (Heart Rate Low)" unit="BPM" value={tempThresholds.heartRateBradycardia} onChange={(t) => setThreshold("heartRateBradycardia", t)} colors={colors} />
+                  <ThresholdEditRow label="Severe Bradycardia" unit="BPM" value={tempThresholds.heartRateSevereBradycardia} onChange={(t) => setThreshold("heartRateSevereBradycardia", t)} colors={colors} />
+                  <ThresholdEditRow label="TEWL Baseline" unit="g/m²/h" value={tempThresholds.tewlBaseline} onChange={(t) => setThreshold("tewlBaseline", t)} colors={colors} />
+                  <ThresholdEditRow label="TEWL Rise Threshold" unit="g/m²/h" value={tempThresholds.tewlRiseThreshold} onChange={(t) => setThreshold("tewlRiseThreshold", t)} colors={colors} />
+                  <ThresholdEditRow label="Fever" unit="°C" value={tempThresholds.temperatureFever} onChange={(t) => setThreshold("temperatureFever", t)} colors={colors} />
+                  <ThresholdEditRow label="High Fever" unit="°C" value={tempThresholds.temperatureHighFever} onChange={(t) => setThreshold("temperatureHighFever", t)} colors={colors} />
+                  <ThresholdEditRow label="Mild Hypothermia" unit="°C" value={tempThresholds.temperatureMildHypothermia} onChange={(t) => setThreshold("temperatureMildHypothermia", t)} colors={colors} />
+                  <ThresholdEditRow label="Severe Hypothermia" unit="°C" value={tempThresholds.temperatureSevereHypothermia} onChange={(t) => setThreshold("temperatureSevereHypothermia", t)} colors={colors} />
+
+                  <TouchableOpacity
+                    onPress={handleResetThresholds}
+                    className="rounded-lg py-2 items-center mt-1"
+                    style={{ backgroundColor: withOpacity(colors.error, 0.1) }}
+                  >
+                    <Text className="text-sm font-semibold" style={{ color: colors.error }}>
+                      Reset to Research Defaults
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <ThresholdViewRow label="Tachycardia (Heart Rate High)" value={`${health.riskThresholds.heartRateTachycardia} BPM`} />
+                  <ThresholdViewRow label="Shock-Level Tachycardia" value={`${health.riskThresholds.heartRateSevere} BPM`} />
+                  <ThresholdViewRow label="Bradycardia (Heart Rate Low)" value={`${health.riskThresholds.heartRateBradycardia} BPM`} />
+                  <ThresholdViewRow label="Severe Bradycardia" value={`${health.riskThresholds.heartRateSevereBradycardia} BPM`} />
+                  <ThresholdViewRow label="TEWL Baseline" value={`${health.riskThresholds.tewlBaseline} g/m²/h`} />
+                  <ThresholdViewRow label="TEWL Rise Threshold (validated rule)" value={`+${health.riskThresholds.tewlRiseThreshold} g/m²/h + corroborating sign`} />
+                  <ThresholdViewRow label="Reactor Mean Rise (reference only)" value={`+${health.riskThresholds.tewlReactionMeanReference} g/m²/h`} />
+                  <ThresholdViewRow label="Epi-Requiring Reaction Mean (reference only)" value={`+${health.riskThresholds.tewlSevereReactionMeanReference} g/m²/h`} />
+                  <ThresholdViewRow label="Fever" value={`${health.riskThresholds.temperatureFever}°C`} />
+                  <ThresholdViewRow label="High Fever" value={`${health.riskThresholds.temperatureHighFever}°C`} />
+                  <ThresholdViewRow label="Mild Hypothermia" value={`${health.riskThresholds.temperatureMildHypothermia}°C`} />
+                  <ThresholdViewRow label="Severe Hypothermia" value={`${health.riskThresholds.temperatureSevereHypothermia}°C`} />
+                </>
+              )}
               <Text className="text-xs text-muted leading-relaxed mt-1">
-                Heart rate thresholds sourced from NIAID/FAAN (Sampson 2006) and Brown (2004)
-                anaphylaxis severity grading - formal diagnostic criteria, scored independently.
-                TEWL rule sourced from Schuler et al., J Clin Invest 2023: a rise of +1 g/m²/h
-                from personal baseline PLUS a corroborating sign together gave 100%
-                sensitivity and 96% specificity (~38 min median warning) - neither alone met
-                that bar, so this app requires both (using heart rate abnormality as the
-                corroborating sign, since there's no separate symptom input) rather than
-                scaling by how far above +1 the rise is - the study found no significant
-                severity gradient beyond that single threshold. Temperature is not part of any
-                anaphylaxis criteria and is weighted lightest.
+                Default heart rate thresholds sourced from NIAID/FAAN (Sampson 2006) and Brown
+                (2004) anaphylaxis severity grading. Default TEWL rule sourced from Schuler et al.,
+                J Clin Invest 2023: a rise of +1 g/m²/h from personal baseline PLUS a corroborating
+                sign together gave 100% sensitivity and 96% specificity (~38 min median warning).
+                Custom values you enter here override these defaults. This app is not a medical
+                device - always follow your doctor's guidance.
               </Text>
             </View>
           </View>
@@ -415,5 +441,50 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
     </ScreenContainer>
+  );
+}
+
+interface ThemeColors {
+  primary: string;
+  muted: string;
+  border: string;
+  foreground: string;
+}
+
+function ThresholdViewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View>
+      <Text className="text-xs text-muted mb-1">{label}</Text>
+      <Text className="text-lg font-semibold text-foreground">{value}</Text>
+    </View>
+  );
+}
+
+function ThresholdEditRow({
+  label,
+  unit,
+  value,
+  onChange,
+  colors,
+}: {
+  label: string;
+  unit: string;
+  value: number;
+  onChange: (text: string) => void;
+  colors: ThemeColors;
+}) {
+  return (
+    <View>
+      <Text className="text-xs text-muted mb-1">
+        {label} ({unit})
+      </Text>
+      <TextInput
+        value={String(value)}
+        onChangeText={onChange}
+        keyboardType="decimal-pad"
+        placeholderTextColor={colors.muted}
+        className="bg-background rounded-lg px-4 py-2.5 border border-border text-foreground text-base"
+      />
+    </View>
   );
 }
