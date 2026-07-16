@@ -94,8 +94,22 @@ class BLEManager {
         AsyncStorage.getItem(PAIRED_DEVICES_KEY),
         AsyncStorage.getItem(ACTIVE_DEVICE_KEY),
       ]);
-      this.pairedDevices = devicesJson ? JSON.parse(devicesJson) : [];
-      this.activeDeviceId = activeId || null;
+      const loaded: PairedDevice[] = devicesJson ? JSON.parse(devicesJson) : [];
+
+      // Purge leftover simulated/demo devices that may have been persisted by
+      // earlier builds (e.g. a fake "xiao-esp32-c3"). Only real platform BLE
+      // device ids should remain. Simulated ids are our own fixed slugs.
+      const SIMULATED_IDS = new Set(["xiao-esp32-c3", "wearable-band-01", "guard-sensor-02", "demo"]);
+      const cleaned = loaded.filter((d) => !SIMULATED_IDS.has(d.id));
+
+      this.pairedDevices = cleaned;
+      this.activeDeviceId = activeId && !SIMULATED_IDS.has(activeId) ? activeId : null;
+
+      // If we removed anything, write the cleaned list back so it stays gone.
+      if (cleaned.length !== loaded.length || (activeId && SIMULATED_IDS.has(activeId))) {
+        await AsyncStorage.setItem(PAIRED_DEVICES_KEY, JSON.stringify(cleaned));
+        if (!this.activeDeviceId) await AsyncStorage.removeItem(ACTIVE_DEVICE_KEY);
+      }
     } catch (error) {
       console.error("Failed to load paired devices:", error);
       this.pairedDevices = [];

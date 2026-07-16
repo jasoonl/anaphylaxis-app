@@ -44,7 +44,7 @@ export default function DashboardScreen() {
     notificationService.initialize();
   }, []);
 
-  // Subscribe to sensor data from BLE device or demo mode
+  // Subscribe to sensor data from the connected BLE device.
   useEffect(() => {
     const unsubscribe = bleManager.onSensorData((data) => {
       health.updateVitalSigns({
@@ -54,20 +54,10 @@ export default function DashboardScreen() {
       });
     });
 
-    // Only fall back to a demo connection if the person hasn't paired a real
-    // device via the Devices screen - otherwise this would silently override
-    // their selection every time the dashboard mounts.
-    (async () => {
-      const activeId = await bleManager.getActiveDeviceId();
-      if (!activeId && health.isDemoMode) {
-        bleManager.connectToDevice("demo");
-      }
-    })();
-
     return () => {
       unsubscribe();
     };
-  }, [health.isDemoMode]);
+  }, []);
 
   // Keep the header's connection label in sync with the actual active device
   useEffect(() => {
@@ -151,11 +141,7 @@ export default function DashboardScreen() {
           <View className="gap-1">
             <Text className="text-3xl font-bold text-foreground">Anaphylaxis Guard</Text>
             <Text className="text-sm text-muted">
-              {connectedDeviceName
-                ? `Connected: ${connectedDeviceName}`
-                : health.isDemoMode
-                  ? "Demo Mode"
-                  : "Disconnected"}
+              {connectedDeviceName ? `Connected: ${connectedDeviceName}` : "No device connected"}
             </Text>
           </View>
 
@@ -261,12 +247,12 @@ export default function DashboardScreen() {
                 <Text className="text-xs text-muted mb-2">Device</Text>
                 <Text
                   className="text-2xl font-bold"
-                  style={{ color: health.isDeviceConnected ? colors.success : colors.error }}
+                  style={{ color: connectedDeviceName ? colors.success : colors.error }}
                 >
-                  {health.isDeviceConnected ? "✓" : "✗"}
+                  {connectedDeviceName ? "✓" : "✗"}
                 </Text>
                 <Text className="text-xs text-muted mt-1">
-                  {health.isDeviceConnected ? "Connected" : "Demo Mode"}
+                  {connectedDeviceName ? "Connected" : "No Device"}
                 </Text>
               </View>
             </View>
