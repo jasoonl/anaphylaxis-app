@@ -128,6 +128,9 @@ const config: ExpoConfig = {
           "Anaphylaxis Guard uses Bluetooth to connect to your wearable sensor and read heart rate, skin water loss, and temperature.",
       },
     ],
+    // Must run after expo-notifications (which auto-injects aps-environment).
+    // Strips the push entitlement so free Apple ID signing works.
+    "./plugins/without-push-entitlement.js",
   ],
   experiments: {
     typedRoutes: true,
