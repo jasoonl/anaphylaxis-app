@@ -138,13 +138,10 @@ export async function ensureBleReady(): Promise<void> {
 }
 
 /**
- * Scan for ALL nearby BLE devices for `timeoutMs`, returning the unique
- * devices found. Devices advertising our service UUID are flagged
- * isRecognized so the UI can highlight the wearable; results are sorted with
- * recognized devices first, then by signal strength (nearest first).
- *
- * Passing null as the UUID filter means "discover everything" - this is what
- * lets the user see and choose any device, not just ones we pre-know.
+ * Scan for Anaphylaxis Guard sensors only - devices advertising our service
+ * UUID - for `timeoutMs`. Filtering at the radio level means random nearby
+ * Bluetooth devices (earbuds, laptops, watches) that can't provide sensor
+ * data never appear in the list. Returns unique devices, nearest first.
  */
 export async function scanForRealDevices(timeoutMs = 6000): Promise<DiscoveredBleDevice[]> {
   const manager = getManager();
@@ -155,7 +152,7 @@ export async function scanForRealDevices(timeoutMs = 6000): Promise<DiscoveredBl
 
   return new Promise<DiscoveredBleDevice[]>((resolve) => {
     manager.startDeviceScan(
-      null, // no UUID filter: discover ALL nearby devices
+      [BLE_SERVICE_UUID], // only devices advertising our sensor service
       { allowDuplicates: false },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (error: any, device: any) => {
@@ -166,24 +163,13 @@ export async function scanForRealDevices(timeoutMs = 6000): Promise<DiscoveredBl
         }
         if (!device) return;
 
-        // Skip unnamed devices - almost always non-connectable peripherals
-        // (beacons, etc.) that just clutter the list. The ESP32 advertises a
-        // name, so the wearable always appears.
-        const displayName = device.name || device.localName;
-        if (!displayName) return;
-
-        const advertisesOurService =
-          Array.isArray(device.serviceUUIDs) &&
-          device.serviceUUIDs.some(
-            (u: string) => u?.toLowerCase() === BLE_SERVICE_UUID.toLowerCase()
-          );
-
+        const displayName = device.name || device.localName || "Anaphylaxis Guard Sensor";
         const existing = found.get(device.id);
         found.set(device.id, {
           id: device.id,
           name: displayName,
           rssi: typeof device.rssi === "number" ? device.rssi : existing?.rssi ?? null,
-          isRecognized: advertisesOurService || existing?.isRecognized || false,
+          isRecognized: true, // everything here advertises our service by definition
         });
       }
     );
@@ -195,12 +181,9 @@ export async function scanForRealDevices(timeoutMs = 6000): Promise<DiscoveredBl
   });
 }
 
-/** Recognized wearables first, then by signal strength (nearest first). */
+/** Nearest (strongest signal) first. */
 function sortBySignal(found: Map<string, DiscoveredBleDevice>): DiscoveredBleDevice[] {
-  return Array.from(found.values()).sort((a, b) => {
-    if (a.isRecognized !== b.isRecognized) return a.isRecognized ? -1 : 1;
-    return (b.rssi ?? -999) - (a.rssi ?? -999);
-  });
+  return Array.from(found.values()).sort((a, b) => (b.rssi ?? -999) - (a.rssi ?? -999));
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -80,9 +80,6 @@ export interface HealthContextType {
   updateRiskThresholds: (thresholds: Partial<RiskThresholds>) => void;
   resetRiskThresholds: () => void;
 
-  // Demo Mode
-  isDemoMode: boolean;
-  setIsDemoMode: (demo: boolean) => void;
 }
 
 const HealthContext = createContext<HealthContextType | undefined>(undefined);
@@ -107,7 +104,6 @@ export function HealthProvider({ children }: { children: ReactNode }) {
 
   const [isDeviceConnected, setIsDeviceConnected] = useState(false);
   const [deviceName, setDeviceName] = useState("XIAO ESP32 C3");
-  const [isDemoMode, setIsDemoMode] = useState(true);
   const [riskThresholds, setRiskThresholds] = useState<RiskThresholds>(DEFAULT_THRESHOLDS);
 
   const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([
@@ -273,8 +269,6 @@ export function HealthProvider({ children }: { children: ReactNode }) {
     riskThresholds,
     updateRiskThresholds,
     resetRiskThresholds,
-    isDemoMode,
-    setIsDemoMode,
   };
 
   return (
