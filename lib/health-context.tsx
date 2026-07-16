@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { RiskThresholds, DEFAULT_THRESHOLDS } from "./risk-calculator";
 
 /**
  * Health Monitoring Context
@@ -74,6 +75,11 @@ export interface HealthContextType {
   addAlertToHistory: (riskLevel: string, score: number) => void;
   clearAlertHistory: () => void;
 
+  // Risk Thresholds (editable by user, e.g. per their doctor's guidance)
+  riskThresholds: RiskThresholds;
+  updateRiskThresholds: (thresholds: Partial<RiskThresholds>) => void;
+  resetRiskThresholds: () => void;
+
   // Demo Mode
   isDemoMode: boolean;
   setIsDemoMode: (demo: boolean) => void;
@@ -102,6 +108,7 @@ export function HealthProvider({ children }: { children: ReactNode }) {
   const [isDeviceConnected, setIsDeviceConnected] = useState(false);
   const [deviceName, setDeviceName] = useState("XIAO ESP32 C3");
   const [isDemoMode, setIsDemoMode] = useState(true);
+  const [riskThresholds, setRiskThresholds] = useState<RiskThresholds>(DEFAULT_THRESHOLDS);
 
   const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([
     {
@@ -137,10 +144,11 @@ export function HealthProvider({ children }: { children: ReactNode }) {
 
   const loadPersistedData = async () => {
     try {
-      const [contactsData, profileData, historyData] = await Promise.all([
+      const [contactsData, profileData, historyData, thresholdsData] = await Promise.all([
         AsyncStorage.getItem("emergencyContacts"),
         AsyncStorage.getItem("userProfile"),
         AsyncStorage.getItem("alertHistory"),
+        AsyncStorage.getItem("riskThresholds"),
       ]);
 
       if (contactsData) {
@@ -163,6 +171,11 @@ export function HealthProvider({ children }: { children: ReactNode }) {
       }
       if (profileData) setUserProfile(JSON.parse(profileData));
       if (historyData) setAlertHistory(JSON.parse(historyData));
+      if (thresholdsData) {
+        // Merge over defaults so any threshold keys added in future app
+        // versions still get a sensible value even if the saved object predates them.
+        setRiskThresholds({ ...DEFAULT_THRESHOLDS, ...JSON.parse(thresholdsData) });
+      }
     } catch (error) {
       console.error("Error loading persisted data:", error);
     }
@@ -227,6 +240,17 @@ export function HealthProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.setItem("alertHistory", JSON.stringify([]));
   };
 
+  const updateRiskThresholds = async (partial: Partial<RiskThresholds>) => {
+    const updated = { ...riskThresholds, ...partial };
+    setRiskThresholds(updated);
+    await AsyncStorage.setItem("riskThresholds", JSON.stringify(updated));
+  };
+
+  const resetRiskThresholds = async () => {
+    setRiskThresholds(DEFAULT_THRESHOLDS);
+    await AsyncStorage.removeItem("riskThresholds");
+  };
+
   const value: HealthContextType = {
     vitalSigns,
     updateVitalSigns,
@@ -245,6 +269,10 @@ export function HealthProvider({ children }: { children: ReactNode }) {
     alertHistory,
     addAlertToHistory,
     clearAlertHistory,
+
+    riskThresholds,
+    updateRiskThresholds,
+    resetRiskThresholds,
     isDemoMode,
     setIsDemoMode,
   };

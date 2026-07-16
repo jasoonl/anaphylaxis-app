@@ -4,7 +4,6 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import * as Haptics from "expo-haptics";
 import { useHealth } from "@/lib/health-context";
-import { DEFAULT_THRESHOLDS } from "@/lib/risk-calculator";
 import { notifyEmergencyContacts, callContact, buildEmergencyMessage } from "@/lib/sms-service";
 import { router } from "expo-router";
 
@@ -168,29 +167,29 @@ export default function EmergencyAlertScreen() {
           >
             <Text className="text-xs font-semibold text-white mb-1">⚠️ Abnormal Readings:</Text>
             <View className="gap-1">
-              {health.vitalSigns.heartRate > DEFAULT_THRESHOLDS.heartRateTachycardia && (
+              {health.vitalSigns.heartRate > health.riskThresholds.heartRateTachycardia && (
                 <Text className="text-xs text-white">
                   • Heart Rate: {Math.round(health.vitalSigns.heartRate)} BPM (tachycardia)
                 </Text>
               )}
-              {health.vitalSigns.heartRate < DEFAULT_THRESHOLDS.heartRateBradycardia && (
+              {health.vitalSigns.heartRate < health.riskThresholds.heartRateBradycardia && (
                 <Text className="text-xs text-white">
                   • Heart Rate: {Math.round(health.vitalSigns.heartRate)} BPM (bradycardia)
                 </Text>
               )}
-              {health.vitalSigns.skinHumidity - DEFAULT_THRESHOLDS.tewlBaseline > DEFAULT_THRESHOLDS.tewlRiseThreshold && (
+              {health.vitalSigns.skinHumidity - health.riskThresholds.tewlBaseline > health.riskThresholds.tewlRiseThreshold && (
                 <Text className="text-xs text-white">
                   • Skin Water Loss (TEWL): +
-                  {Math.round((health.vitalSigns.skinHumidity - DEFAULT_THRESHOLDS.tewlBaseline) * 10) / 10} g/m²/h from
+                  {Math.round((health.vitalSigns.skinHumidity - health.riskThresholds.tewlBaseline) * 10) / 10} g/m²/h from
                   baseline (rising)
                 </Text>
               )}
-              {health.vitalSigns.temperature > DEFAULT_THRESHOLDS.temperatureFever && (
+              {health.vitalSigns.temperature > health.riskThresholds.temperatureFever && (
                 <Text className="text-xs text-white">
                   • Temperature: {Math.round(health.vitalSigns.temperature * 10) / 10}°C (fever)
                 </Text>
               )}
-              {health.vitalSigns.temperature < DEFAULT_THRESHOLDS.temperatureMildHypothermia && (
+              {health.vitalSigns.temperature < health.riskThresholds.temperatureMildHypothermia && (
                 <Text className="text-xs text-white">
                   • Temperature: {Math.round(health.vitalSigns.temperature * 10) / 10}°C (hypothermia)
                 </Text>

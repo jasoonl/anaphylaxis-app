@@ -96,7 +96,8 @@ export default function DashboardScreen() {
     const riskFactors = calculateRisk(
       health.vitalSigns.heartRate,
       health.vitalSigns.skinHumidity,
-      health.vitalSigns.temperature
+      health.vitalSigns.temperature,
+      health.riskThresholds
     );
 
     const trend =
@@ -113,7 +114,7 @@ export default function DashboardScreen() {
     });
 
     setPrevScore(riskFactors.combinedScore);
-  }, [health.vitalSigns.heartRate, health.vitalSigns.skinHumidity, health.vitalSigns.temperature]);
+  }, [health.vitalSigns.heartRate, health.vitalSigns.skinHumidity, health.vitalSigns.temperature, health.riskThresholds]);
 
   const getRiskColor = () => {
     switch (health.riskState.level) {
