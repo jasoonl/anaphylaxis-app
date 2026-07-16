@@ -34,6 +34,15 @@ function formatRelativeTime(timestamp: number | null): string {
   return `${Math.round(diffHr / 24)}d ago`;
 }
 
+/** Human-readable signal strength from RSSI (dBm). Higher (closer to 0) = nearer. */
+function signalLabel(rssi: number | null | undefined): string {
+  if (rssi == null) return "Nearby";
+  if (rssi >= -60) return "Strong signal";
+  if (rssi >= -75) return "Good signal";
+  if (rssi >= -88) return "Weak signal";
+  return "Far away";
+}
+
 export default function DeviceManagementScreen() {
   const colors = useColors();
 
@@ -140,9 +149,10 @@ export default function DeviceManagementScreen() {
           </View>
 
           <Text className="text-xs text-muted leading-relaxed">
-            Real Bluetooth scanning can't run inside Expo Go - it requires a custom native
-            build. This screen manages paired devices and streams simulated sensor data, the
-            same demo mode used throughout the app.
+            Scan to find nearby Bluetooth devices, then tap Connect to pair. Your Anaphylaxis
+            Guard sensor is highlighted and listed first. Once connected, the app reads live
+            heart rate, skin water loss, and temperature directly from the device. (In Expo Go,
+            where real Bluetooth isn't available, simulated devices and data are shown instead.)
           </Text>
 
           {/* Active Device Status */}
@@ -204,11 +214,29 @@ export default function DeviceManagementScreen() {
             {discoveredDevices.map((device) => (
               <View
                 key={device.id}
-                className="bg-surface rounded-2xl p-4 border border-border flex-row items-center justify-between"
+                className="bg-surface rounded-2xl p-4 border flex-row items-center justify-between"
+                style={{
+                  borderColor: device.isRecognized ? colors.success : colors.border,
+                }}
               >
-                <View>
-                  <Text className="text-base font-semibold text-foreground">{device.name}</Text>
-                  <Text className="text-xs text-muted mt-0.5">Available to pair</Text>
+                <View className="flex-1 pr-2">
+                  <View className="flex-row items-center gap-2">
+                    <Text className="text-base font-semibold text-foreground">{device.name}</Text>
+                    {device.isRecognized && (
+                      <View
+                        className="rounded-full px-2 py-0.5"
+                        style={{ backgroundColor: withOpacity(colors.success, 0.15) }}
+                      >
+                        <Text className="text-xs font-semibold" style={{ color: colors.success }}>
+                          Guard Sensor
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text className="text-xs text-muted mt-0.5">
+                    {signalLabel(device.rssi)}
+                    {device.isRecognized ? " · Recommended" : ""}
+                  </Text>
                 </View>
                 <TouchableOpacity
                   onPress={() => handlePair(device)}
@@ -219,7 +247,7 @@ export default function DeviceManagementScreen() {
                   {pairingId === device.id ? (
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
-                    <Text className="text-sm font-semibold text-white">Pair</Text>
+                    <Text className="text-sm font-semibold text-white">Connect</Text>
                   )}
                 </TouchableOpacity>
               </View>

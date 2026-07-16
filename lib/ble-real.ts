@@ -72,6 +72,8 @@ function getManager(): any {
 export interface DiscoveredBleDevice {
   id: string; // platform BLE device id (iOS: UUID, Android: MAC)
   name: string;
+  rssi: number | null; // signal strength (closer to 0 = stronger/nearer)
+  isRecognized: boolean; // true if it advertises our Anaphylaxis Guard service UUID
 }
 
 /** Decodes a base64 characteristic value into a UTF-8 string. */
@@ -136,8 +138,13 @@ export async function ensureBleReady(): Promise<void> {
 }
 
 /**
- * Scan for devices advertising our service UUID for `timeoutMs`, returning
- * the unique devices found. Stops scanning before resolving.
+ * Scan for ALL nearby BLE devices for `timeoutMs`, returning the unique
+ * devices found. Devices advertising our service UUID are flagged
+ * isRecognized so the UI can highlight the wearable; results are sorted with
+ * recognized devices first, then by signal strength (nearest first).
+ *
+ * Passing null as the UUID filter means "discover everything" - this is what
+ * lets the user see and choose any device, not just ones we pre-know.
  */
 export async function scanForRealDevices(timeoutMs = 6000): Promise<DiscoveredBleDevice[]> {
   const manager = getManager();
@@ -148,28 +155,51 @@ export async function scanForRealDevices(timeoutMs = 6000): Promise<DiscoveredBl
 
   return new Promise<DiscoveredBleDevice[]>((resolve) => {
     manager.startDeviceScan(
-      [BLE_SERVICE_UUID],
+      null, // no UUID filter: discover ALL nearby devices
       { allowDuplicates: false },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (error: any, device: any) => {
         if (error) {
           manager.stopDeviceScan();
-          resolve(Array.from(found.values()));
+          resolve(sortBySignal(found));
           return;
         }
-        if (device && !found.has(device.id)) {
-          found.set(device.id, {
-            id: device.id,
-            name: device.name || device.localName || "Anaphylaxis Guard Sensor",
-          });
-        }
+        if (!device) return;
+
+        // Skip unnamed devices - almost always non-connectable peripherals
+        // (beacons, etc.) that just clutter the list. The ESP32 advertises a
+        // name, so the wearable always appears.
+        const displayName = device.name || device.localName;
+        if (!displayName) return;
+
+        const advertisesOurService =
+          Array.isArray(device.serviceUUIDs) &&
+          device.serviceUUIDs.some(
+            (u: string) => u?.toLowerCase() === BLE_SERVICE_UUID.toLowerCase()
+          );
+
+        const existing = found.get(device.id);
+        found.set(device.id, {
+          id: device.id,
+          name: displayName,
+          rssi: typeof device.rssi === "number" ? device.rssi : existing?.rssi ?? null,
+          isRecognized: advertisesOurService || existing?.isRecognized || false,
+        });
       }
     );
 
     setTimeout(() => {
       manager.stopDeviceScan();
-      resolve(Array.from(found.values()));
+      resolve(sortBySignal(found));
     }, timeoutMs);
+  });
+}
+
+/** Recognized wearables first, then by signal strength (nearest first). */
+function sortBySignal(found: Map<string, DiscoveredBleDevice>): DiscoveredBleDevice[] {
+  return Array.from(found.values()).sort((a, b) => {
+    if (a.isRecognized !== b.isRecognized) return a.isRecognized ? -1 : 1;
+    return (b.rssi ?? -999) - (a.rssi ?? -999);
   });
 }
 
