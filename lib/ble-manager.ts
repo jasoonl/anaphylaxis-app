@@ -1,19 +1,28 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  isBleAvailable,
+  scanForRealDevices,
+  connectAndStream,
+  BLE_DEVICE_NAME_HINT,
+} from "./ble-real";
 
 /**
  * BLE Device Manager
  *
- * Handles Bluetooth Low Energy connectivity with wearable device.
+ * Handles connectivity to the wearable sensor and streams SensorData to
+ * subscribers. Has two modes, chosen automatically at runtime:
  *
- * IMPORTANT: Real BLE radio scanning/pairing requires a native module
- * (e.g. react-native-ble-plx) compiled into a custom dev client - it cannot
- * run inside Expo Go, which only bundles Expo's own precompiled module set.
- * Since this app is built to run in Expo Go without an Apple Developer
- * account or custom build, this manager provides a fully real device
- * PAIRING/MANAGEMENT layer (persisted paired-device list, add/remove/
- * reconnect, only one device active at a time - all genuinely functional
- * app state) on top of simulated sensor data, since there's no actual
- * hardware to read from in this environment.
+ * 1. REAL BLE (native build only): when react-native-ble-plx is present
+ *    (a dev/prebuild build), this scans for, connects to, and streams live
+ *    data from the actual XIAO ESP32C3 over Bluetooth. See lib/ble-real.ts
+ *    for the radio layer and the firmware contract (UUIDs + JSON format).
+ *
+ * 2. SIMULATED (Expo Go, or when no real device is available): generates
+ *    realistic simulated sensor data with an occasional reaction "episode",
+ *    so the full app and risk pipeline can be exercised without hardware.
+ *
+ * The pairing/management layer (persisted paired-device list, add/remove/
+ * reconnect, one active device at a time) is shared by both modes.
  */
 
 const PAIRED_DEVICES_KEY = "pairedDevices";
@@ -50,6 +59,11 @@ class BLEManager {
   private pairedDevices: PairedDevice[] = [];
   private activeDeviceId: string | null = null;
   private loaded = false;
+
+  // Real-BLE streaming teardown function, set when connected to real hardware.
+  private realDisconnect: (() => Promise<void>) | null = null;
+  // True while a real BLE device is actively streaming (vs. simulation).
+  private streamingReal = false;
 
   // Smooth random-walk state so values drift realistically instead of jumping every tick
   private simHeartRate = 72;
@@ -102,18 +116,31 @@ class BLEManager {
   }
 
   /**
-   * Simulate discovering nearby devices available to pair. Returns devices
-   * not already in the paired list. (Real BLE scanning isn't possible in
-   * Expo Go - see class-level note.)
+   * Discover nearby devices available to pair. Uses the real BLE radio when
+   * running in a native build (filtered to our service UUID); falls back to
+   * simulated candidate devices in Expo Go. Excludes already-paired devices.
    */
   async scanForDevices(): Promise<BLEDevice[]> {
     await this.ensureLoaded();
-    const candidates: BLEDevice[] = [
-      { id: "xiao-esp32-c3", name: "XIAO ESP32 C3", isConnected: false },
-      { id: "wearable-band-01", name: "Wearable Band", isConnected: false },
-      { id: "guard-sensor-02", name: "Anaphylaxis Guard Sensor", isConnected: false },
-    ];
     const pairedIds = new Set(this.pairedDevices.map((d) => d.id));
+
+    if (isBleAvailable()) {
+      try {
+        const real = await scanForRealDevices();
+        return real
+          .filter((d) => !pairedIds.has(d.id))
+          .map((d) => ({ id: d.id, name: d.name, isConnected: false }));
+      } catch (error) {
+        console.error("Real BLE scan failed, falling back to simulated list:", error);
+        // fall through to simulated candidates
+      }
+    }
+
+    const candidates: BLEDevice[] = [
+      { id: "xiao-esp32-c3", name: `${BLE_DEVICE_NAME_HINT} (Simulated)`, isConnected: false },
+      { id: "wearable-band-01", name: "Wearable Band (Simulated)", isConnected: false },
+      { id: "guard-sensor-02", name: "Anaphylaxis Guard Sensor (Simulated)", isConnected: false },
+    ];
     return candidates.filter((c) => !pairedIds.has(c.id));
   }
 
@@ -184,10 +211,52 @@ class BLEManager {
   }
 
   private async setActiveDevice(id: string, name: string): Promise<void> {
+    // Tear down any existing stream (real or simulated) first.
+    await this.teardownStream();
+
     this.isConnected = true;
     this.currentDevice = { id, name, isConnected: true };
     this.activeDeviceId = id;
+
+    // Try real hardware first when the native module is present and the id
+    // looks like a real platform BLE id (simulated ids are our own slugs).
+    const isSimulatedId = ["xiao-esp32-c3", "wearable-band-01", "guard-sensor-02", "demo"].includes(id);
+    if (isBleAvailable() && !isSimulatedId) {
+      try {
+        this.realDisconnect = await connectAndStream(
+          id,
+          (data) => this.listeners.forEach((l) => l(data)),
+          () => {
+            // Unexpected disconnect: mark disconnected but keep it paired.
+            this.streamingReal = false;
+            this.isConnected = false;
+          }
+        );
+        this.streamingReal = true;
+        return;
+      } catch (error) {
+        console.error("Real BLE connect failed, using simulated stream:", error);
+        // fall through to simulated stream
+      }
+    }
+
+    this.streamingReal = false;
     this.startDataStream();
+  }
+
+  /** Tears down whichever stream is active (real BLE or simulated interval). */
+  private async teardownStream(): Promise<void> {
+    if (this.realDisconnect) {
+      const fn = this.realDisconnect;
+      this.realDisconnect = null;
+      this.streamingReal = false;
+      try {
+        await fn();
+      } catch {
+        // best-effort
+      }
+    }
+    this.stopDataStream();
   }
 
   /**
@@ -212,13 +281,13 @@ class BLEManager {
   }
 
   /**
-   * Disconnect from current device
+   * Disconnect from current device (real or simulated).
    */
   async disconnect(): Promise<void> {
+    await this.teardownStream();
     this.isConnected = false;
     this.currentDevice = null;
     this.activeDeviceId = null;
-    this.stopDataStream();
   }
 
   /**

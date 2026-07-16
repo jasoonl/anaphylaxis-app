@@ -119,6 +119,15 @@ const config: ExpoConfig = {
         },
       },
     ],
+    [
+      "react-native-ble-plx",
+      {
+        isBackgroundEnabled: false,
+        neverForLocation: true,
+        bluetoothAlwaysPermission:
+          "Anaphylaxis Guard uses Bluetooth to connect to your wearable sensor and read heart rate, skin water loss, and temperature.",
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,
