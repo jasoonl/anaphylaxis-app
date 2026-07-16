@@ -5,7 +5,6 @@ import { useColors } from "@/hooks/use-colors";
 import * as Haptics from "expo-haptics";
 import { useHealth } from "@/lib/health-context";
 import { withOpacity } from "@/lib/utils";
-import { sendEmergencyText, buildEmergencyMessage } from "@/lib/sms-service";
 
 /**
  * Emergency Contacts Screen
@@ -68,18 +67,6 @@ export default function ContactsScreen() {
     if (contact) {
       health.updateEmergencyContact(id, { notifyEnabled: !contact.notifyEnabled });
     }
-  };
-
-  const handleTestAlert = async () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const message = buildEmergencyMessage(health.riskState.score, health.userProfile.name) + " (This is a test.)";
-    const result = await sendEmergencyText(health.emergencyContacts, message);
-    if (result.sent) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } else {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    }
-    Alert.alert(result.sent ? "Test Alert Sent" : "Test Alert Not Sent", result.message);
   };
 
   const handleCallContact = (phone: string) => {
@@ -253,15 +240,6 @@ export default function ContactsScreen() {
               </View>
             )}
           </View>
-
-          {/* Test Alert Button */}
-          <TouchableOpacity
-            onPress={handleTestAlert}
-            className="bg-primary rounded-lg py-3 px-4 items-center active:opacity-80"
-            activeOpacity={0.8}
-          >
-            <Text className="text-base font-semibold text-white">Send Test Alert</Text>
-          </TouchableOpacity>
 
           {/* Info Box */}
           <View
