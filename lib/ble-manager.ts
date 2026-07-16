@@ -32,6 +32,8 @@ export interface BLEDevice {
   id: string;
   name: string;
   isConnected: boolean;
+  rssi?: number | null; // signal strength from a real scan (absent for simulated)
+  isRecognized?: boolean; // advertises our service UUID (real scans only)
 }
 
 export interface PairedDevice {
@@ -129,7 +131,13 @@ class BLEManager {
         const real = await scanForRealDevices();
         return real
           .filter((d) => !pairedIds.has(d.id))
-          .map((d) => ({ id: d.id, name: d.name, isConnected: false }));
+          .map((d) => ({
+            id: d.id,
+            name: d.name,
+            isConnected: false,
+            rssi: d.rssi,
+            isRecognized: d.isRecognized,
+          }));
       } catch (error) {
         console.error("Real BLE scan failed, falling back to simulated list:", error);
         // fall through to simulated candidates
