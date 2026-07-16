@@ -88,12 +88,19 @@ export default function DeviceManagementScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setPairingId(device.id);
     try {
-      await bleManager.pairDevice(device);
-      setDiscoveredDevices((prev) => prev.filter((d) => d.id !== device.id));
+      const status = await bleManager.pairDevice(device);
       await refresh();
-      Alert.alert("Device Paired", `${device.name} is now connected and streaming.`);
+      if (status === "no-sensor") {
+        Alert.alert(
+          "No Sensor Data",
+          `${device.name} connected, but it isn't an Anaphylaxis Guard sensor - it doesn't provide readable health data, so it wasn't added to your devices.`
+        );
+      } else {
+        setDiscoveredDevices((prev) => prev.filter((d) => d.id !== device.id));
+        Alert.alert("Device Connected", `${device.name} is now connected and streaming.`);
+      }
     } catch (error) {
-      Alert.alert("Pairing Failed", "Could not pair with this device.");
+      Alert.alert("Connection Failed", `Could not connect to ${device.name}.`);
     } finally {
       setPairingId(null);
     }
@@ -103,9 +110,13 @@ export default function DeviceManagementScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setBusyId(device.id);
     try {
-      const ok = await bleManager.reconnectDevice(device.id);
+      const status = await bleManager.reconnectDevice(device.id);
       await refresh();
-      if (!ok) Alert.alert("Reconnect Failed", `Could not reconnect to ${device.name}.`);
+      if (status === "no-sensor") {
+        Alert.alert("No Sensor Data", `${device.name} no longer provides readable sensor data.`);
+      } else if (status === "not-found") {
+        Alert.alert("Connect Failed", `Could not connect to ${device.name}.`);
+      }
     } finally {
       setBusyId(null);
     }
@@ -299,7 +310,7 @@ export default function DeviceManagementScreen() {
                             <ActivityIndicator size="small" color={colors.primary} />
                           ) : (
                             <Text className="text-sm font-semibold" style={{ color: colors.primary }}>
-                              Reconnect
+                              Connect
                             </Text>
                           )}
                         </TouchableOpacity>
