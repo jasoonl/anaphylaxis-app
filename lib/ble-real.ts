@@ -227,6 +227,25 @@ export async function connectAndStream(
   connectedDevice = device;
   await device.discoverAllServicesAndCharacteristics();
 
+  // Verify this device actually exposes our sensor service. Any Bluetooth
+  // device can be connected to, but only ones running the Anaphylaxis Guard
+  // firmware send data we can read - so if our service isn't present, bail
+  // with a clear error instead of connecting to a device we can't read.
+  const services = await device.services();
+  const hasOurService = services.some(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (s: any) => s.uuid?.toLowerCase() === BLE_SERVICE_UUID.toLowerCase()
+  );
+  if (!hasOurService) {
+    try {
+      await manager.cancelDeviceConnection(deviceId);
+    } catch {
+      // best-effort
+    }
+    connectedDevice = null;
+    throw new Error("NO_SENSOR_SERVICE");
+  }
+
   // Fires if the device disconnects for any reason.
   device.onDisconnected(() => {
     monitorSubscription = null;

@@ -127,23 +127,23 @@ class BLEManager {
     const pairedIds = new Set(this.pairedDevices.map((d) => d.id));
 
     if (isBleAvailable()) {
-      try {
-        const real = await scanForRealDevices();
-        return real
-          .filter((d) => !pairedIds.has(d.id))
-          .map((d) => ({
-            id: d.id,
-            name: d.name,
-            isConnected: false,
-            rssi: d.rssi,
-            isRecognized: d.isRecognized,
-          }));
-      } catch (error) {
-        console.error("Real BLE scan failed, falling back to simulated list:", error);
-        // fall through to simulated candidates
-      }
+      // Real BLE build: the add-a-device list comes PURELY from live Bluetooth.
+      // Return whatever the radio actually found (possibly empty) - never show
+      // simulated placeholders here, since real hardware is present.
+      const real = await scanForRealDevices();
+      return real
+        .filter((d) => !pairedIds.has(d.id))
+        .map((d) => ({
+          id: d.id,
+          name: d.name,
+          isConnected: false,
+          rssi: d.rssi,
+          isRecognized: d.isRecognized,
+        }));
     }
 
+    // Expo Go only (no BLE radio available): show simulated candidates so the
+    // flow can still be exercised without hardware or a native build.
     const candidates: BLEDevice[] = [
       { id: "xiao-esp32-c3", name: `${BLE_DEVICE_NAME_HINT} (Simulated)`, isConnected: false },
       { id: "wearable-band-01", name: "Wearable Band (Simulated)", isConnected: false },
@@ -167,12 +167,20 @@ class BLEManager {
   }
 
   /**
-   * Pair a newly discovered device: adds it to the paired list and connects
-   * to it as the active device (disconnecting any previously active one -
-   * only one device streams at a time, matching how a real wearable works).
+   * Pair a newly discovered device: connects to it and, if it has a readable
+   * Anaphylaxis Guard sensor, adds it to the paired list as the active device.
+   * Returns the connection status so the UI can explain a no-sensor device.
    */
-  async pairDevice(device: BLEDevice): Promise<PairedDevice> {
+  async pairDevice(device: BLEDevice): Promise<"real" | "no-sensor" | "simulated"> {
     await this.ensureLoaded();
+    const status = await this.setActiveDevice(device.id, device.name);
+
+    // Don't add a device with no readable sensor to "My Devices" - the user
+    // connected to some other Bluetooth device that we can't read from.
+    if (status === "no-sensor") {
+      return status;
+    }
+
     const now = Date.now();
     const paired: PairedDevice = {
       id: device.id,
@@ -181,22 +189,24 @@ class BLEManager {
       lastConnectedAt: now,
     };
     this.pairedDevices = [...this.pairedDevices.filter((d) => d.id !== device.id), paired];
-    await this.setActiveDevice(device.id, device.name);
     await this.persist();
-    return paired;
+    return status;
   }
 
   /**
    * Reconnect to a previously paired device that isn't currently active.
+   * Returns the connection status.
    */
-  async reconnectDevice(id: string): Promise<boolean> {
+  async reconnectDevice(id: string): Promise<"real" | "no-sensor" | "simulated" | "not-found"> {
     await this.ensureLoaded();
     const device = this.pairedDevices.find((d) => d.id === id);
-    if (!device) return false;
-    await this.setActiveDevice(device.id, device.name);
-    device.lastConnectedAt = Date.now();
-    await this.persist();
-    return true;
+    if (!device) return "not-found";
+    const status = await this.setActiveDevice(device.id, device.name);
+    if (status !== "no-sensor") {
+      device.lastConnectedAt = Date.now();
+      await this.persist();
+    }
+    return status;
   }
 
   /**
@@ -218,7 +228,7 @@ class BLEManager {
     await this.persist();
   }
 
-  private async setActiveDevice(id: string, name: string): Promise<void> {
+  private async setActiveDevice(id: string, name: string): Promise<"real" | "no-sensor" | "simulated"> {
     // Tear down any existing stream (real or simulated) first.
     await this.teardownStream();
 
@@ -241,15 +251,27 @@ class BLEManager {
           }
         );
         this.streamingReal = true;
-        return;
+        return "real";
       } catch (error) {
+        // A device with no Anaphylaxis Guard sensor service is a user error
+        // (they connected to some other Bluetooth device), not a fallback
+        // case - report it so the UI can explain rather than silently
+        // streaming simulated data from a real device the user picked.
+        const message = error instanceof Error ? error.message : String(error);
+        if (message.includes("NO_SENSOR_SERVICE")) {
+          this.isConnected = false;
+          this.activeDeviceId = null;
+          this.currentDevice = null;
+          return "no-sensor";
+        }
         console.error("Real BLE connect failed, using simulated stream:", error);
-        // fall through to simulated stream
+        // fall through to simulated stream for other/transient errors
       }
     }
 
     this.streamingReal = false;
     this.startDataStream();
+    return "simulated";
   }
 
   /** Tears down whichever stream is active (real BLE or simulated interval). */
