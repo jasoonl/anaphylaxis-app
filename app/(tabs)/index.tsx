@@ -4,7 +4,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import * as Haptics from "expo-haptics";
 import { useHealth } from "@/lib/health-context";
-import { calculateRisk } from "@/lib/risk-calculator";
+import { calculateRisk, isHeartRateAvailable } from "@/lib/risk-calculator";
 import { bleManager } from "@/lib/ble-manager";
 import { router } from "expo-router";
 import { notificationService } from "@/lib/notification-service";
@@ -219,9 +219,13 @@ export default function DashboardScreen() {
               <View className="flex-1 min-w-[48%] bg-surface rounded-2xl p-4 border border-border">
                 <Text className="text-xs text-muted mb-2">Heart Rate</Text>
                 <Text className="text-2xl font-bold text-foreground">
-                  {Math.round(health.vitalSigns.heartRate)}
+                  {isHeartRateAvailable(health.vitalSigns.heartRate)
+                    ? Math.round(health.vitalSigns.heartRate)
+                    : "--"}
                 </Text>
-                <Text className="text-xs text-muted mt-1">BPM</Text>
+                <Text className="text-xs text-muted mt-1">
+                  {isHeartRateAvailable(health.vitalSigns.heartRate) ? "BPM" : "No pulse sensor"}
+                </Text>
               </View>
 
               {/* Skin Water Loss (TEWL) */}

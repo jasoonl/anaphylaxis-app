@@ -107,6 +107,15 @@ export const DEFAULT_THRESHOLDS: RiskThresholds = {
   temperatureSevereHypothermia: 35.5,
 };
 
+/**
+ * Whether a heart-rate reading is a real measurement. Hardware sends a
+ * negative sentinel (-1) when no pulse sensor is wired or the read failed;
+ * anything outside plausible human range is also treated as unavailable.
+ */
+export function isHeartRateAvailable(heartRate: number): boolean {
+  return Number.isFinite(heartRate) && heartRate >= 20 && heartRate <= 250;
+}
+
 /** Linearly interpolates `value` between [from, to] onto [0, max], clamped. */
 function scaleBetween(value: number, from: number, to: number, max: number): number {
   if (to === from) return 0;
@@ -120,6 +129,12 @@ function scaleBetween(value: number, from: number, to: number, max: number): num
  * Bradycardia <60 bpm ramps 0->2.5 by 50 bpm (severe), then 2.5->4 by 40 bpm.
  */
 function calculateHeartRateRisk(heartRate: number, t: RiskThresholds): number {
+  // Hardware sends a negative sentinel when no pulse sensor is present/reading.
+  // Treat any implausible value as "unavailable" -> contributes no risk AND no
+  // corroborating sign. Without this, -1 bpm would fall through the bradycardia
+  // branch and score maximum heart-rate risk, falsely escalating the alert.
+  if (!isHeartRateAvailable(heartRate)) return 0;
+
   if (heartRate > t.heartRateTachycardia) {
     if (heartRate <= t.heartRateSevere) {
       return scaleBetween(heartRate, t.heartRateTachycardia, t.heartRateSevere, 2.5);
