@@ -10,19 +10,19 @@ import {
  * BLE Device Manager
  *
  * Handles connectivity to the wearable sensor and streams SensorData to
- * subscribers. Has two modes, chosen automatically at runtime:
+ * subscribers.
  *
- * 1. REAL BLE (native build only): when react-native-ble-plx is present
- *    (a dev/prebuild build), this scans for, connects to, and streams live
- *    data from the actual XIAO ESP32C3 over Bluetooth. See lib/ble-real.ts
- *    for the radio layer and the firmware contract (UUIDs + JSON format).
+ * REAL SENSOR DATA ONLY. There is no simulated/demo mode: the app scans for,
+ * connects to, and streams live data from the XIAO ESP32C3 over Bluetooth.
+ * If no device is connected, no data flows and the UI shows "No device
+ * connected". See lib/ble-real.ts for the radio layer and the firmware
+ * contract (UUIDs + JSON payload format).
  *
- * 2. SIMULATED (Expo Go, or when no real device is available): generates
- *    realistic simulated sensor data with an occasional reaction "episode",
- *    so the full app and risk pipeline can be exercised without hardware.
+ * Requires a native build (react-native-ble-plx); BLE is unavailable in
+ * Expo Go, where scanning simply returns no devices.
  *
- * The pairing/management layer (persisted paired-device list, add/remove/
- * reconnect, one active device at a time) is shared by both modes.
+ * Also owns the pairing layer: persisted paired-device list, add/remove/
+ * reconnect, one active device at a time.
  */
 
 const PAIRED_DEVICES_KEY = "pairedDevices";
@@ -50,13 +50,10 @@ export interface SensorData {
   timestamp: number;
 }
 
-type EpisodePhase = "normal" | "rising" | "peak" | "recovering";
-
 class BLEManager {
   private isConnected = false;
   private currentDevice: BLEDevice | null = null;
   private listeners: Array<(data: SensorData) => void> = [];
-  private simulationInterval: ReturnType<typeof setInterval> | null = null;
 
   private pairedDevices: PairedDevice[] = [];
   private activeDeviceId: string | null = null;
@@ -67,20 +64,6 @@ class BLEManager {
   // True while a real BLE device is actively streaming (vs. simulation).
   private streamingReal = false;
 
-  // Smooth random-walk state so values drift realistically instead of jumping every tick
-  private simHeartRate = 72;
-  private simGsr = 10; // g/m2/h - TEWL baseline (Schuler et al. 2023 cohort mean)
-  private simTemperature = 36.8;
-
-  // Episode state machine: occasionally simulates a reaction building and resolving,
-  // so heart rate / skin humidity / temperature all sweep through Safe, Warning, and
-  // Critical ranges during demo mode instead of staying flat forever.
-  private episodePhase: EpisodePhase = "normal";
-  private episodeTicksRemaining = 0;
-  private episodeTargets = { heartRate: 72, gsr: 15, temperature: 36.8 };
-
-  private readonly BASELINE = { heartRate: 72, gsr: 10, temperature: 36.8 };
-  private readonly EPISODE_PEAK = { heartRate: 132, gsr: 13.5, temperature: 38.3 }; // gsr = baseline + severe reaction mean rise (Schuler et al.)
 
 
   /**
@@ -156,14 +139,9 @@ class BLEManager {
         }));
     }
 
-    // Expo Go only (no BLE radio available): show simulated candidates so the
-    // flow can still be exercised without hardware or a native build.
-    const candidates: BLEDevice[] = [
-      { id: "xiao-esp32-c3", name: `${BLE_DEVICE_NAME_HINT} (Simulated)`, isConnected: false },
-      { id: "wearable-band-01", name: "Wearable Band (Simulated)", isConnected: false },
-      { id: "guard-sensor-02", name: "Anaphylaxis Guard Sensor (Simulated)", isConnected: false },
-    ];
-    return candidates.filter((c) => !pairedIds.has(c.id));
+    // No BLE radio available (e.g. Expo Go): nothing to show. This app streams
+    // real sensor data only - it never lists fake devices.
+    return [];
   }
 
   /** Returns all paired (known) devices, most recently connected first. */
@@ -185,7 +163,7 @@ class BLEManager {
    * Anaphylaxis Guard sensor, adds it to the paired list as the active device.
    * Returns the connection status so the UI can explain a no-sensor device.
    */
-  async pairDevice(device: BLEDevice): Promise<"real" | "no-sensor" | "simulated"> {
+  async pairDevice(device: BLEDevice): Promise<"real" | "no-sensor" | "failed"> {
     await this.ensureLoaded();
     const status = await this.setActiveDevice(device.id, device.name);
 
@@ -211,7 +189,7 @@ class BLEManager {
    * Reconnect to a previously paired device that isn't currently active.
    * Returns the connection status.
    */
-  async reconnectDevice(id: string): Promise<"real" | "no-sensor" | "simulated" | "not-found"> {
+  async reconnectDevice(id: string): Promise<"real" | "no-sensor" | "failed" | "not-found"> {
     await this.ensureLoaded();
     const device = this.pairedDevices.find((d) => d.id === id);
     if (!device) return "not-found";
@@ -242,7 +220,7 @@ class BLEManager {
     await this.persist();
   }
 
-  private async setActiveDevice(id: string, name: string): Promise<"real" | "no-sensor" | "simulated"> {
+  private async setActiveDevice(id: string, name: string): Promise<"real" | "no-sensor" | "failed"> {
     // Tear down any existing stream (real or simulated) first.
     await this.teardownStream();
 
@@ -278,17 +256,20 @@ class BLEManager {
           this.currentDevice = null;
           return "no-sensor";
         }
-        console.error("Real BLE connect failed, using simulated stream:", error);
-        // fall through to simulated stream for other/transient errors
+        console.error("Real BLE connect failed:", error);
       }
     }
 
+    // No simulated fallback: this app streams real sensor data only. If the
+    // connection failed, report it rather than inventing numbers.
     this.streamingReal = false;
-    this.startDataStream();
-    return "simulated";
+    this.isConnected = false;
+    this.activeDeviceId = null;
+    this.currentDevice = null;
+    return "failed";
   }
 
-  /** Tears down whichever stream is active (real BLE or simulated interval). */
+  /** Tears down the active real-BLE stream, if any. */
   private async teardownStream(): Promise<void> {
     if (this.realDisconnect) {
       const fn = this.realDisconnect;
@@ -299,28 +280,6 @@ class BLEManager {
       } catch {
         // best-effort
       }
-    }
-    this.stopDataStream();
-  }
-
-  /**
-   * Connect to a specific BLE device by ID. Kept for backward compatibility
-   * with existing demo-mode wiring; prefer pairDevice/reconnectDevice for
-   * the device management screen.
-   */
-  async connectToDevice(deviceId: string): Promise<boolean> {
-    try {
-      this.isConnected = true;
-      this.currentDevice = {
-        id: deviceId,
-        name: "Demo Sensor",
-        isConnected: true,
-      };
-      this.startDataStream();
-      return true;
-    } catch (error) {
-      console.error("Connection failed:", error);
-      return false;
     }
   }
 
@@ -344,91 +303,8 @@ class BLEManager {
     };
   }
 
-  /**
-   * Start streaming data from device or demo mode
-   */
-  private startDataStream(): void {
-    if (this.simulationInterval) clearInterval(this.simulationInterval);
 
-    this.simulationInterval = setInterval(() => {
-      const data = this.generateSensorData();
-      this.listeners.forEach((listener) => listener(data));
-    }, 1000);
-  }
 
-  /**
-   * Stop data stream
-   */
-  private stopDataStream(): void {
-    if (this.simulationInterval) {
-      clearInterval(this.simulationInterval);
-      this.simulationInterval = null;
-    }
-  }
-
-  /**
-   * Generate simulated sensor data for demo mode.
-   *
-   * Uses a smooth random walk toward a moving target, rather than independent
-   * random noise each tick, so values drift realistically. An episode state
-   * machine occasionally (roughly every 30-90s) ramps vitals up into Warning
-   * and Critical territory over ~15s, holds briefly, then recovers over ~20s -
-   * simulating a reaction building and resolving so every risk level and all
-   * three metrics are actually exercised during testing, not just the safe range.
-   */
-  private generateSensorData(): SensorData {
-    this.advanceEpisode();
-
-    const target =
-      this.episodePhase === "normal" ? this.BASELINE : this.episodeTargets;
-
-    // Random walk: step a fraction of the way toward the current target, plus jitter
-    this.simHeartRate = this.step(this.simHeartRate, target.heartRate, 6, 1.2);
-    this.simGsr = this.step(this.simGsr, target.gsr, 1, 0.3);
-    this.simTemperature = this.step(this.simTemperature, target.temperature, 0.15, 0.05);
-
-    return {
-      heartRate: Math.max(45, Math.min(160, this.simHeartRate)),
-      gsr: Math.max(5, Math.min(20, this.simGsr)),
-      temperature: Math.max(34.5, Math.min(39.5, this.simTemperature)),
-      timestamp: Date.now(),
-    };
-  }
-
-  /** Moves `current` a step toward `target`, with a bit of random jitter added. */
-  private step(current: number, target: number, maxStep: number, jitter: number): number {
-    const direction = target - current;
-    const move = Math.sign(direction) * Math.min(Math.abs(direction) * 0.25, maxStep);
-    const noise = (Math.random() - 0.5) * jitter;
-    return current + move + noise;
-  }
-
-  /** Advances the episode state machine by one tick (called once per generated sample). */
-  private advanceEpisode(): void {
-    if (this.episodePhase === "normal") {
-      // ~3% chance per second to start a new episode (roughly every ~30-90s in practice)
-      if (Math.random() < 0.03) {
-        this.episodePhase = "rising";
-        this.episodeTicksRemaining = 12 + Math.floor(Math.random() * 8); // ~12-20s ramp up
-        this.episodeTargets = { ...this.EPISODE_PEAK };
-      }
-      return;
-    }
-
-    this.episodeTicksRemaining -= 1;
-    if (this.episodeTicksRemaining > 0) return;
-
-    if (this.episodePhase === "rising") {
-      this.episodePhase = "peak";
-      this.episodeTicksRemaining = 5 + Math.floor(Math.random() * 6); // hold ~5-10s
-    } else if (this.episodePhase === "peak") {
-      this.episodePhase = "recovering";
-      this.episodeTicksRemaining = 18 + Math.floor(Math.random() * 10); // ~18-27s recovery
-      this.episodeTargets = { ...this.BASELINE };
-    } else if (this.episodePhase === "recovering") {
-      this.episodePhase = "normal";
-    }
-  }
 
   /**
    * Get current connection status

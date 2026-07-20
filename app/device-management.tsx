@@ -95,6 +95,11 @@ export default function DeviceManagementScreen() {
           "No Sensor Data",
           `${device.name} connected, but it isn't an Anaphylaxis Guard sensor - it doesn't provide readable health data, so it wasn't added to your devices.`
         );
+      } else if (status === "failed") {
+        Alert.alert(
+          "Connection Failed",
+          `Could not connect to ${device.name}. Make sure it's powered on and in range, then try again.`
+        );
       } else {
         setDiscoveredDevices((prev) => prev.filter((d) => d.id !== device.id));
         Alert.alert("Device Connected", `${device.name} is now connected and streaming.`);
@@ -114,6 +119,8 @@ export default function DeviceManagementScreen() {
       await refresh();
       if (status === "no-sensor") {
         Alert.alert("No Sensor Data", `${device.name} no longer provides readable sensor data.`);
+      } else if (status === "failed") {
+        Alert.alert("Connection Failed", `Could not connect to ${device.name}. Make sure it's powered on and in range.`);
       } else if (status === "not-found") {
         Alert.alert("Connect Failed", `Could not connect to ${device.name}.`);
       }
