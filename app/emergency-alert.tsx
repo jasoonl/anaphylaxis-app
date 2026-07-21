@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, ScrollView, Alert } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Linking, Alert } from "react-native";
 import { useState, useEffect, useRef } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -11,6 +11,7 @@ import { router } from "expo-router";
  * Emergency Alert Screen
  *
  * Full-screen emergency response interface:
+ * - Large "Call 911" button
  * - Administer epinephrine guidance
  * - Epinephrine guidance
  * - Notify emergency contacts
@@ -59,6 +60,28 @@ export default function EmergencyAlertScreen() {
 
     return () => clearInterval(hapticInterval);
   }, []);
+
+  const handleCall911 = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    // Confirm before dialing so the button can't place an emergency call by
+    // accident from a pocket tap on an alert screen that opens by itself.
+    Alert.alert(
+      "Call Emergency Services",
+      "This will open your phone's dialer to call 911.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Call 911",
+          style: "destructive",
+          onPress: () => {
+            Linking.openURL("tel:911").catch(() =>
+              Alert.alert("Could Not Call", "Unable to open the phone dialer on this device.")
+            );
+          },
+        },
+      ]
+    );
+  };
 
   const handleNotifyContacts = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -179,6 +202,17 @@ export default function EmergencyAlertScreen() {
 
           {/* Action Buttons - Stacked for mobile */}
           <View className="gap-2">
+            {/* Call 911 */}
+            <TouchableOpacity
+              onPress={handleCall911}
+              className="bg-white rounded-lg py-4 px-3 items-center active:opacity-80"
+              activeOpacity={0.9}
+            >
+              <Text className="text-2xl mb-1">📞</Text>
+              <Text className="text-lg font-bold text-error">CALL 911</Text>
+              <Text className="text-xs text-muted mt-0.5">Emergency Services</Text>
+            </TouchableOpacity>
+
             {/* Administer Epinephrine */}
             <TouchableOpacity
               onPress={handleAdministerEpinephrine}
