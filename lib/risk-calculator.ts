@@ -116,6 +116,18 @@ export function isHeartRateAvailable(heartRate: number): boolean {
   return Number.isFinite(heartRate) && heartRate >= 20 && heartRate <= 250;
 }
 
+/**
+ * Whether a temperature reading is a real BODY-temperature measurement.
+ * Hardware sends a negative sentinel (-1) when no body-temperature sensor is
+ * wired. This matters for the chamber-based TEWL hardware: its thermistor and
+ * in-chamber SHT31s measure the PID-heated chamber (~35 C), not the patient.
+ * Reporting that as body temperature would score as hypothermia on every
+ * single reading, so it must be sent as unavailable instead.
+ */
+export function isTemperatureAvailable(temperature: number): boolean {
+  return Number.isFinite(temperature) && temperature >= 30 && temperature <= 45;
+}
+
 /** Linearly interpolates `value` between [from, to] onto [0, max], clamped. */
 function scaleBetween(value: number, from: number, to: number, max: number): number {
   if (to === from) return 0;
@@ -175,6 +187,10 @@ function calculateGSRRisk(currentTewl: number, heartRateRisk: number, t: RiskThr
  * Mild hypothermia <36.1 ramps 0->1.3 by 35.5 (severe), then 1.3->2 by 34.8.
  */
 function calculateTemperatureRisk(temperature: number, t: RiskThresholds): number {
+  // No body-temperature sensor present (or an implausible read) -> contributes
+  // no risk, rather than falsely scoring chamber temperature as hypothermia.
+  if (!isTemperatureAvailable(temperature)) return 0;
+
   if (temperature > t.temperatureFever) {
     if (temperature <= t.temperatureHighFever) {
       return scaleBetween(temperature, t.temperatureFever, t.temperatureHighFever, 1.3);
