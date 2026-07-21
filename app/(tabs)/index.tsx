@@ -186,9 +186,9 @@ export default function DashboardScreen() {
               {/* Trend Indicator */}
               <View className="flex-row items-center gap-2">
                 <Text className="text-sm text-muted">
-                  {health.riskState.trend === "rising" && "📈 Rising"}
-                  {health.riskState.trend === "falling" && "📉 Falling"}
-                  {health.riskState.trend === "stable" && "➡️ Stable"}
+                  {health.riskState.trend === "rising" && "Rising"}
+                  {health.riskState.trend === "falling" && "Falling"}
+                  {health.riskState.trend === "stable" && "Stable"}
                 </Text>
               </View>
 
