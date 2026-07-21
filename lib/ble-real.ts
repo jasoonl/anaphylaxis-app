@@ -32,7 +32,7 @@ export const BLE_DATA_CHARACTERISTIC_UUID = "7973c8f9-eb2e-47b4-9e1f-05a20cb4862
 
 // The name the device advertises. Scanning also filters by service UUID, so
 // this is a secondary/display hint rather than the primary match.
-export const BLE_DEVICE_NAME_HINT = "AnaphylaxisGuard";
+export const BLE_DEVICE_NAME_HINT = "EpiLink";
 
 // Lazy-loaded native module. Kept as `any` because the types only resolve in
 // a native build; guarded by isBleAvailable() everywhere it's used.
@@ -73,26 +73,31 @@ export interface DiscoveredBleDevice {
   id: string; // platform BLE device id (iOS: UUID, Android: MAC)
   name: string;
   rssi: number | null; // signal strength (closer to 0 = stronger/nearer)
-  isRecognized: boolean; // true if it advertises our Anaphylaxis Guard service UUID
+  isRecognized: boolean; // true if it advertises our EpiLink service UUID
 }
 
 /** Decodes a base64 characteristic value into a UTF-8 string. */
 function base64ToString(b64: string): string {
-  // atob may not exist in the RN runtime; use Buffer if available, else manual.
-  if (typeof atob === "function") {
-    return decodeURIComponent(
-      atob(b64)
-        .split("")
-        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join("")
-    );
+  // Pure-JS base64 decode. Do NOT depend on atob() or Buffer here: neither is
+  // guaranteed in the Hermes runtime, and the previous version silently
+  // returned "" when both were missing, so every packet failed to parse with
+  // no error anywhere - the device looked connected but no data ever arrived.
+  const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const clean = b64.replace(/[^A-Za-z0-9+/]/g, "");
+  let out = "";
+  for (let i = 0; i < clean.length; i += 4) {
+    const n =
+      (CHARS.indexOf(clean[i]) << 18) |
+      (CHARS.indexOf(clean[i + 1]) << 12) |
+      ((CHARS.indexOf(clean[i + 2]) & 63) << 6) |
+      (CHARS.indexOf(clean[i + 3]) & 63);
+    out += String.fromCharCode((n >> 16) & 255);
+    if (clean[i + 2] !== undefined) out += String.fromCharCode((n >> 8) & 255);
+    if (clean[i + 3] !== undefined) out += String.fromCharCode(n & 255);
   }
-  // Fallback for environments with Buffer (Metro polyfills it in dev builds)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const B = (global as any).Buffer;
-  if (B) return B.from(b64, "base64").toString("utf-8");
-  return "";
+  return out;
 }
+
 
 /**
  * Parse the device's JSON payload into SensorData. THE SINGLE POINT that
@@ -123,22 +128,46 @@ export async function ensureBleReady(): Promise<void> {
   const manager = getManager();
   if (!manager) throw new Error("BLE not available in this build");
 
-  // Wait for the adapter to reach PoweredOn (handles the brief startup window).
   await new Promise<void>((resolve, reject) => {
+    let settled = false;
+    const finish = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      try {
+        sub?.remove();
+      } catch {
+        /* ignore */
+      }
+      clearTimeout(timer);
+      fn();
+    };
+
+    // Previously this waited forever when the adapter was PoweredOff or
+    // Resetting: it neither resolved nor rejected, so a scan just hung with
+    // no error shown to the user. Now every terminal state is handled and
+    // there is a hard timeout as a backstop.
     const sub = manager.onStateChange((state: string) => {
       if (state === "PoweredOn") {
-        sub.remove();
-        resolve();
-      } else if (state === "Unauthorized" || state === "Unsupported") {
-        sub.remove();
-        reject(new Error(`Bluetooth ${state}`));
+        finish(resolve);
+      } else if (state === "PoweredOff") {
+        finish(() => reject(new Error("Bluetooth is turned off. Turn it on in Settings.")));
+      } else if (state === "Unauthorized") {
+        finish(() => reject(new Error("EpiLink isn't allowed to use Bluetooth. Enable it in iOS Settings > EpiLink > Bluetooth.")));
+      } else if (state === "Unsupported") {
+        finish(() => reject(new Error("This device doesn't support Bluetooth Low Energy.")));
       }
+      // "Resetting"/"Unknown" are transient - wait for the next state.
     }, true);
+
+    const timer = setTimeout(() => {
+      finish(() => reject(new Error("Bluetooth didn't become ready in time. Try again.")));
+    }, 8000);
   });
 }
 
+
 /**
- * Scan for Anaphylaxis Guard sensors only - devices advertising our service
+ * Scan for EpiLink sensors only - devices advertising our service
  * UUID - for `timeoutMs`. Filtering at the radio level means random nearby
  * Bluetooth devices (earbuds, laptops, watches) that can't provide sensor
  * data never appear in the list. Returns unique devices, nearest first.
@@ -150,36 +179,72 @@ export async function scanForRealDevices(timeoutMs = 6000): Promise<DiscoveredBl
 
   const found = new Map<string, DiscoveredBleDevice>();
 
-  return new Promise<DiscoveredBleDevice[]>((resolve) => {
+  return new Promise<DiscoveredBleDevice[]>((resolve, reject) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      try {
+        manager.stopDeviceScan();
+      } catch {
+        /* ignore */
+      }
+      clearTimeout(timer);
+      resolve(sortBySignal(found));
+    };
+
+    // IMPORTANT - why the filter is null instead of [BLE_SERVICE_UUID]:
+    // A BLE advertisement is capped at 31 bytes. A 128-bit service UUID eats
+    // 18 of them, so once the device name is long enough the UUID gets dropped
+    // from the advertisement entirely. When that happens a UUID-filtered scan
+    // never sees the device at all - which is exactly the "scan finds nothing"
+    // failure. So we scan unfiltered and match in JS on EITHER the advertised
+    // service UUID OR the device name, which works no matter how the
+    // advertisement ends up packed.
     manager.startDeviceScan(
-      [BLE_SERVICE_UUID], // only devices advertising our sensor service
+      null,
       { allowDuplicates: false },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (error: any, device: any) => {
         if (error) {
-          manager.stopDeviceScan();
-          resolve(sortBySignal(found));
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          try {
+            manager.stopDeviceScan();
+          } catch {
+            /* ignore */
+          }
+          reject(new Error(error?.message ?? "Bluetooth scan failed"));
           return;
         }
         if (!device) return;
 
-        const displayName = device.name || device.localName || "Anaphylaxis Guard Sensor";
+        const advertisedName: string = device.name || device.localName || "";
+        const uuids: string[] = Array.isArray(device.serviceUUIDs) ? device.serviceUUIDs : [];
+
+        const matchesService = uuids.some(
+          (u) => typeof u === "string" && u.toLowerCase() === BLE_SERVICE_UUID.toLowerCase()
+        );
+        const matchesName =
+          advertisedName.toLowerCase().includes(BLE_DEVICE_NAME_HINT.toLowerCase());
+
+        if (!matchesService && !matchesName) return; // not our sensor - ignore
+
         const existing = found.get(device.id);
         found.set(device.id, {
           id: device.id,
-          name: displayName,
+          name: advertisedName || "EpiLink Sensor",
           rssi: typeof device.rssi === "number" ? device.rssi : existing?.rssi ?? null,
-          isRecognized: true, // everything here advertises our service by definition
+          isRecognized: true,
         });
       }
     );
 
-    setTimeout(() => {
-      manager.stopDeviceScan();
-      resolve(sortBySignal(found));
-    }, timeoutMs);
+    const timer = setTimeout(finish, timeoutMs);
   });
 }
+
 
 /** Nearest (strongest signal) first. */
 function sortBySignal(found: Map<string, DiscoveredBleDevice>): DiscoveredBleDevice[] {
@@ -211,7 +276,7 @@ export async function connectAndStream(
   await device.discoverAllServicesAndCharacteristics();
 
   // Verify this device actually exposes our sensor service. Any Bluetooth
-  // device can be connected to, but only ones running the Anaphylaxis Guard
+  // device can be connected to, but only ones running the EpiLink
   // firmware send data we can read - so if our service isn't present, bail
   // with a clear error instead of connecting to a device we can't read.
   const services = await device.services();

@@ -130,5 +130,5 @@ export async function notifyEmergencyContacts(
 
 /** Builds the standard emergency alert message body sent to contacts. */
 export function buildEmergencyMessage(riskScore: number, userName: string): string {
-  return `EMERGENCY ALERT from Anaphylaxis Guard: ${userName} may be experiencing a severe allergic reaction (risk score ${Math.round(riskScore)}/10). Please check on them immediately or call 911.`;
+  return `EMERGENCY ALERT from EpiLink: ${userName} may be experiencing a severe allergic reaction (risk score ${Math.round(riskScore)}/10). Please check on them immediately or call 911.`;
 }

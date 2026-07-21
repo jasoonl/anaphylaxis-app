@@ -10,7 +10,7 @@ import { router } from "expo-router";
 import { notificationService } from "@/lib/notification-service";
 
 /**
- * Dashboard Screen - Anaphylaxis Guard
+ * Dashboard Screen - EpiLink
  *
  * Main monitoring interface showing:
  * - Real-time risk status (Green/Yellow/Red)
@@ -139,7 +139,7 @@ export default function DashboardScreen() {
         <View className="gap-6 pb-8">
           {/* Header */}
           <View className="gap-1">
-            <Text className="text-3xl font-bold text-foreground">Anaphylaxis Guard</Text>
+            <Text className="text-3xl font-bold text-foreground">EpiLink</Text>
             <Text className="text-sm text-muted">
               {connectedDeviceName ? `Connected: ${connectedDeviceName}` : "No device connected"}
             </Text>

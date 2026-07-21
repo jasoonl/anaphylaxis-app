@@ -71,18 +71,24 @@ export default function DeviceManagementScreen() {
     setIsScanning(true);
     setDiscoveredDevices([]);
     try {
-      // Simulated scan delay - there's no real radio to wait on, but a brief
-      // delay makes the flow read honestly as "searching" rather than instant
-      await new Promise((resolve) => setTimeout(resolve, 1200));
       const found = await bleManager.scanForDevices();
       setDiscoveredDevices(found);
       if (found.length === 0) {
-        Alert.alert("No New Devices", "All available demo devices are already paired.");
+        Alert.alert(
+          "No Sensors Found",
+          "No EpiLink sensor is advertising nearby.\n\nCheck that the device is powered on, that its serial monitor shows \"Advertising as EpiLink\", and that you are within a few metres."
+        );
       }
+    } catch (error) {
+      // Surface the real reason (Bluetooth off, permission denied, timeout)
+      // instead of failing silently with an empty list.
+      const message = error instanceof Error ? error.message : "Bluetooth scan failed.";
+      Alert.alert("Can't Scan", message);
     } finally {
       setIsScanning(false);
     }
   };
+
 
   const handlePair = async (device: BLEDevice) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -93,7 +99,7 @@ export default function DeviceManagementScreen() {
       if (status === "no-sensor") {
         Alert.alert(
           "No Sensor Data",
-          `${device.name} connected, but it isn't an Anaphylaxis Guard sensor - it doesn't provide readable health data, so it wasn't added to your devices.`
+          `${device.name} connected, but it isn't an EpiLink sensor - it doesn't provide readable health data, so it wasn't added to your devices.`
         );
       } else if (status === "failed") {
         Alert.alert(
