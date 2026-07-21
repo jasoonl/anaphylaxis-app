@@ -160,7 +160,7 @@ class BLEManager {
 
   /**
    * Pair a newly discovered device: connects to it and, if it has a readable
-   * Anaphylaxis Guard sensor, adds it to the paired list as the active device.
+   * EpiLink sensor, adds it to the paired list as the active device.
    * Returns the connection status so the UI can explain a no-sensor device.
    */
   async pairDevice(device: BLEDevice): Promise<"real" | "no-sensor" | "failed"> {
@@ -245,7 +245,7 @@ class BLEManager {
         this.streamingReal = true;
         return "real";
       } catch (error) {
-        // A device with no Anaphylaxis Guard sensor service is a user error
+        // A device with no EpiLink sensor service is a user error
         // (they connected to some other Bluetooth device), not a fallback
         // case - report it so the UI can explain rather than silently
         // streaming simulated data from a real device the user picked.

@@ -28,12 +28,12 @@ const schemeFromBundleId = `manus${timestamp}`;
 
 const env = {
   // App branding - update these values directly (do not use env vars)
-  appName: "Anaphylaxis Guard",
-  appSlug: "anaphylaxis-app-new",
+  appName: "EpiLink",
+  appSlug: "epilink",
   // S3 URL of the app logo - set this to the URL returned by generate_image when creating custom logo
   // Leave empty to use the default icon from assets/images/icon.png
-  logoUrl: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663693064768/MiyjoVvHGoSQfqKr.png",
-  scheme: "anaphylaxisguard",
+  logoUrl: "",
+  scheme: "epilink",
   iosBundleId: bundleId,
   androidPackage: bundleId,
 };
@@ -125,7 +125,7 @@ const config: ExpoConfig = {
         isBackgroundEnabled: false,
         neverForLocation: true,
         bluetoothAlwaysPermission:
-          "Anaphylaxis Guard uses Bluetooth to connect to your wearable sensor and read heart rate, skin water loss, and temperature.",
+          "EpiLink uses Bluetooth to connect to your wearable sensor and read heart rate, skin water loss, and temperature.",
       },
     ],
     // Must run after expo-notifications (which auto-injects aps-environment).

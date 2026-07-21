@@ -1,5 +1,5 @@
 /*
- * Anaphylaxis Guard - XIAO ESP32C3 firmware
+ * EpiLink - XIAO ESP32C3 firmware
  * Written to match the KiCad schematic exactly.
  *
  * ============================ HARDWARE ============================
@@ -61,7 +61,7 @@
 // ------------------------- BLE (must match the app) -------------------------
 #define SERVICE_UUID        "aaf868e4-de2f-4d65-9801-ce8dc3ffcb8f"
 #define CHARACTERISTIC_UUID "7973c8f9-eb2e-47b4-9e1f-05a20cb48622"
-#define DEVICE_NAME         "AnaphylaxisGuard"
+#define DEVICE_NAME         "EpiLink"
 
 // ------------------------------- Pins ---------------------------------------
 // NOTE (strapping): D0 = GPIO2 must be HIGH at reset on ESP32-C3. A 10K/10K
@@ -344,12 +344,26 @@ void setup() {
   pCharacteristic->addDescriptor(new BLE2902());
   pService->start();
 
+  // ---- Advertising layout matters here ----
+  // A BLE advertisement is limited to 31 bytes. A 128-bit service UUID costs
+  // 18 of them (2 header + 16 UUID) and flags cost 3, leaving ~10 bytes for
+  // the name. The old name "AnaphylaxisGuard" (16 chars = 18 bytes) blew past
+  // that limit, so the stack silently dropped the service UUID - and the app,
+  // which scanned filtered by that UUID, could never see this device.
+  // "EpiLink" (7 chars = 9 bytes) fits: 3 + 18 + 9 = 30 <= 31.
+  // We additionally push the name into the SCAN RESPONSE packet, which is a
+  // separate 31 bytes, so the advertisement itself only has to carry the UUID.
   BLEAdvertising *adv = BLEDevice::getAdvertising();
   adv->addServiceUUID(SERVICE_UUID);
   adv->setScanResponse(true);
+
+  BLEAdvertisementData scanResponse;
+  scanResponse.setName(DEVICE_NAME);
+  adv->setScanResponseData(scanResponse);
+
   BLEDevice::startAdvertising();
 
-  Serial.println("Advertising as " DEVICE_NAME);
+  Serial.println("Advertising as " DEVICE_NAME " - service " SERVICE_UUID);
   lastSampleMs = millis();
   lastPurgeStartMs = millis();
 }
