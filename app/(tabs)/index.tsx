@@ -1,4 +1,4 @@
-import { ScrollView, Text, View, TouchableOpacity, Pressable } from "react-native";
+import { ScrollView, Text, View, TouchableOpacity, Pressable, Image } from "react-native";
 import { useState, useEffect } from "react";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -138,11 +138,19 @@ export default function DashboardScreen() {
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
         <View className="gap-6 pb-8">
           {/* Header */}
-          <View className="gap-1">
-            <Text className="text-3xl font-bold text-foreground">EpiLink</Text>
-            <Text className="text-sm text-muted">
-              {connectedDeviceName ? `Connected: ${connectedDeviceName}` : "No device connected"}
-            </Text>
+          <View className="flex-row items-center gap-3">
+            <Image
+              source={require("../../assets/images/epilink-logo.png")}
+              style={{ width: 44, height: 49 }}
+              resizeMode="contain"
+              accessibilityLabel="EpiLink logo"
+            />
+            <View className="gap-1 flex-1">
+              <Text className="text-3xl font-bold text-foreground">EpiLink</Text>
+              <Text className="text-sm text-muted">
+                {connectedDeviceName ? `Connected: ${connectedDeviceName}` : "No device connected"}
+              </Text>
+            </View>
           </View>
 
           {/* Risk Status Card */}
