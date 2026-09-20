@@ -108,18 +108,18 @@ export function HealthProvider({ children }: { children: ReactNode }) {
 
   const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([
     {
-      id: "1",
-      name: "Alex Rivera",
-      phone: "+1 (555) 123-4567",
-      relationship: "Friend",
-      notifyEnabled: true,
+            id: "1",
+            name: "Alex Rivera",
+            phone: "+1 (555) 123-4567",
+            relationship: "Friend",
+            notifyEnabled: true,
     },
     {
-      id: "2",
-      name: "Sam Chen",
-      phone: "+1 (555) 987-6543",
-      relationship: "Friend",
-      notifyEnabled: true,
+            id: "2",
+            name: "Sam Chen",
+            phone: "+1 (555) 987-6543",
+            relationship: "Friend",
+            notifyEnabled: true,
     },
   ]);
 
